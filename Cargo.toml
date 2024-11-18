@@ -1,0 +1,26 @@
+[package]
+name = "rSOC"
+version = "0.1.0"
+authors = ["buran <bvran@proton.me>"]
+edition = "2021"
+
+[dependencies]
+prost = "0.13.3"
+tonic = {version="0.12.3",features = ["tls"]}
+tokio = {version="1.41.1",features = ["net", "macros"]}
+futures = "0.3.31"
+
+[build-dependencies]
+tonic-build = "0.12.3"
+
+[[bin]]
+name = "management_server"
+path = "src/mgmt_server.rs"
+
+[[bin]]
+name = "host_sensor"
+path = "src/host_sensor.rs"
+
+[[bin]]
+name = "net_sensor"
+path = "src/net_sensor.rs"
