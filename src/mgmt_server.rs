@@ -1,5 +1,5 @@
 use clap::{Arg, Command};
-use menu::menu::{main_menu};
+use menu::menu::main_menu;
 mod menu;
 
 const USER_LIST_FILE: &str = "users.txt";
