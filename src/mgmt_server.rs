@@ -1,17 +1,18 @@
 use clap::{Arg, Command};
 use sha2::{Sha256, Digest};
 
-use menu::menu::main_menu;
-use file_manager::file_manager::user_file_handler;
-
 mod menu;
 mod file_manager;
+mod structs;
+
+use menu::menu::main_menu;
+use file_manager::file_manager::user_file_handler;
+use structs::soc_structs::SessionStatus;
 
 const USER_LIST_FILE: &str = "users.txt";
 const AUDIT_LOG: &str = "audit.txt";
 const EVENT_LOG: &str = "events.txt";
-
-static AUDIT_STATUS: bool = true;
+const HOSTNAME: &str = "MAMA-1 | Control centre";
 
 fn main() {
     let matches = Command::new("rSOC")
@@ -45,5 +46,11 @@ fn main() {
         return;
     }
     
-    main_menu();
+    let current_session: &mut SessionStatus = &mut SessionStatus {
+        host: HOSTNAME.to_string(),
+        user: input_username.to_string(),
+        audit_status: true
+    };
+
+    main_menu(current_session);
 }
