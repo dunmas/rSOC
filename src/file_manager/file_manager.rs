@@ -37,7 +37,26 @@ pub mod user_file_handler {
 }
 
 pub mod audit_handler {
+    use std::time::SystemTime;
 
+    enum AuditEventType {
+        AudEnable,
+    }
+
+    pub fn get_10_latest_audit_messages() {
+
+    }
+
+    pub fn write_audit_event(timestamp: SystemTime, host: String, user: String, event_type: AuditEventType, message: String) -> bool {
+        let status: bool = true;
+        status
+    }
+
+    pub fn change_audit_status(audit_status: &mut bool, host: String, user: String) {
+        *audit_status = !*audit_status;
+        let audit_message: String = if audit_status == &true { "Audit enabled".to_string() } else { "Audit disabled".to_string() };
+        write_audit_event(SystemTime::now(), host, user, AuditEventType::AudEnable, audit_message);
+    }
 }
 
 pub mod event_handler {

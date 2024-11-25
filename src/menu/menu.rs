@@ -25,14 +25,6 @@ const SENSORS_MENU: &str = "\
             3) Update rules\n\
             4) Back\n\
             ------------------------------------------------------";
-const USERS_MENU: &str = "\
-            ------------------------------------------------------\n\
-            Select option:\n\
-            1) List of users\n\
-            2) Update user\n\
-            3) Delete user\n\
-            4) Back\n\
-            ------------------------------------------------------";
 const AUDIT_MENU: &str = "\
             ------------------------------------------------------\n\
             Select option:\n\

@@ -11,6 +11,8 @@ const USER_LIST_FILE: &str = "users.txt";
 const AUDIT_LOG: &str = "audit.txt";
 const EVENT_LOG: &str = "events.txt";
 
+static AUDIT_STATUS: bool = true;
+
 fn main() {
     let matches = Command::new("rSOC")
         .version("0.0.1")
@@ -37,12 +39,8 @@ fn main() {
     hasher.update(input_password);
     let pass_hash = hasher.finalize();
 
-    if user_map.contains_key(input_username) {
-        if user_map[input_username].0 != format!("{:x}", pass_hash) {
-            println!("Wrong credentials. Goodbye.");
-            return;
-        }
-    } else {
+    if !user_map.contains_key(input_username) 
+    || user_map[input_username].0 != format!("{:x}", pass_hash) {
         println!("Wrong credentials. Goodbye.");
         return;
     }
