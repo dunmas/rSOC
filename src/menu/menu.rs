@@ -5,9 +5,10 @@ const MAIN_MENU: &str = "\
         Hello! This is rSOC Management Server command console.\n\
         ------------------------------------------------------\n\
         Please, select option:\n\
-        1) Event log               4) Users settings\n\
-        2) Sensors settings        5) Exit\n\
+        1) Event log\n\
+        2) Sensors settings\n\
         3) Audit settings\n\
+        4) Exit\n\
         ------------------------------------------------------";
 const EVENT_MENU: &str = "\
             ------------------------------------------------------\n\
@@ -64,8 +65,7 @@ pub fn main_menu() {
             "1" => event_menu(),
             "2" => sensors_menu(),
             "3" => audit_menu(),
-            "4" => users_menu(),
-            "5" => {
+            "4" => {
                 println!("Goodbye.");
                 break;
             }
@@ -117,30 +117,6 @@ fn sensors_menu() {
             }
             "3" => {
                 println!("update rules");
-                pause!();
-            }
-            "4" => break,
-            _ => println!("Undefined option. Try again."),
-        }
-    }
-}
-
-fn users_menu() {
-    loop {
-        println!("{}", USERS_MENU);
-        let choise = get_user_choice();
-
-        match choise.as_str() {
-            "1" => {
-                println!("list of users");
-                pause!();
-            }
-            "2" => {
-                println!("update");
-                pause!();
-            }
-            "3" => {
-                println!("delete");
                 pause!();
             }
             "4" => break,
