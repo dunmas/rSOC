@@ -39,9 +39,12 @@ pub mod user_file_handler {
 pub mod audit_handler {
     use std::time::SystemTime;
     use std::fs::File;
+    use std::io::Write;
     use std::path::Path;
     use std::sync::{Arc, Mutex};
-
+    use chrono::DateTime;
+    use chrono::offset::Utc;
+    
     use crate::structs::soc_structs::{AuditEventType, LogFiles};
     use crate::structs::soc_structs::multithread::FileMutexes;
 
@@ -71,18 +74,29 @@ pub mod audit_handler {
 
     }
 
-    pub fn write_audit_event(timestamp: SystemTime, host: String, user: String, event_type: AuditEventType, message: String, log_files: &LogFiles) -> bool {
-        let status: bool = true;
-
-        // let mut file = file.lock().unwrap(); // Блокируем доступ к файлу
-        // writeln!(file, "{}", content)?;
-        status
+    pub fn write_audit_event(timestamp: SystemTime, host: String, user: String, event_type: AuditEventType, message: String, file_mutexes: &FileMutexes) -> bool {
+        let mut audit_file = file_mutexes.audit_mutex.lock().unwrap(); // Блокируем доступ к файлу
+        let time_string: DateTime<Utc> = timestamp.into();
+        let params_list = vec![time_string.to_string(),
+                                            host,
+                                            user,
+                                            event_type.to_string(),
+                                            message]; 
+        
+        match writeln!(audit_file, "{}", params_list.join("[:|:]")) {
+            Ok(_) => true,
+            Err(_e) => false
+        }
     }
 
-    pub fn change_audit_status(audit_status: &mut bool, host: String, user: String, log_files: &LogFiles) {
+    pub fn change_audit_status(audit_status: &mut bool, host: String, user: String, file_mutexes: &FileMutexes) -> (bool, bool) {
         *audit_status = !*audit_status;
-        let audit_message: String = if audit_status == &true { "Audit enabled".to_string() } else { "Audit disabled".to_string() };
-        write_audit_event(SystemTime::now(), host, user, AuditEventType::AudEnable, audit_message, log_files);
+
+        if *audit_status {
+            (true, write_audit_event(SystemTime::now(), host, user, AuditEventType::AudEnable, "Audit enabled".to_string(), file_mutexes))
+        } else {
+            (false, write_audit_event(SystemTime::now(), host, user, AuditEventType::AudDisable, "Audit disabled".to_string(), file_mutexes))
+        }
     }
 }
 
