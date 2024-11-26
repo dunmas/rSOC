@@ -37,12 +37,14 @@ pub mod user_file_handler {
 }
 
 pub mod audit_handler {
+    use std::string;
     use std::time::SystemTime;
-    use std::io::Write;
-    use std::fs::OpenOptions;
+    use std::io::{Read, Write};
+    use std::fs::{OpenOptions, File};
     use std::sync::{Arc, Mutex};
     use chrono::DateTime;
     use chrono::offset::Utc;
+    use futures::io::BufReader;
     
     use crate::structs::soc_structs::{AuditEventType, LogFiles};
     use crate::structs::soc_structs::multithread::FileMutexes;
@@ -51,11 +53,13 @@ pub mod audit_handler {
         let audit_file = OpenOptions::new()
                                 .append(true)
                                 .create(true)
+                                .read(true)
                                 .open(&log_files.audit_file)
                                 .unwrap();
         let event_file = OpenOptions::new()
                                 .append(true)
                                 .create(true)
+                                .read(true)
                                 .open(&log_files.event_file)
                                 .unwrap();
 
@@ -66,12 +70,32 @@ pub mod audit_handler {
 
     }
 
-    pub fn get_10_latest_audit_messages() {
+    pub fn get_10_latest_audit_messages(file_mutexes: &FileMutexes) {
+        let mut audit_file = file_mutexes.audit_mutex.lock().unwrap();
+        let mut result: String = "".to_owned(); 
+        let buf: &mut String = &mut "".to_owned(); 
 
+        match (*audit_file).read_to_string(buf){
+            Ok(_) => {
+                // let strings:Vec<&str> = buf.split("\n").collect::<Vec<&str>>();
+                // let size = strings.len();
+                // let mut top_count = if size < 10 { size } else { 10 };
+                // let mut data_vec: Vec<String> = vec!["".to_string()];
+                
+                // while top_count > 0 {
+                //     // result = result + &strings[size - top_count] + &"\n".to_string();
+                //     data_vec.push(strings[size - top_count].to_string());
+                //     top_count = top_count - 1;
+                // }
+
+                // println!("{}", data_vec.join("\n"));
+            },
+            Err(e) => println!("Error occured while reading from audit file: {}", e)
+        }
     }
 
     pub fn write_audit_event(timestamp: SystemTime, host: String, user: String, event_type: AuditEventType, message: String, file_mutexes: &FileMutexes) -> bool {
-        let mut audit_file = file_mutexes.audit_mutex.lock().unwrap(); // Блокируем доступ к файлу
+        let mut audit_file = file_mutexes.audit_mutex.lock().unwrap();
         let time_string: DateTime<Utc> = timestamp.into();
         let params_list = vec![time_string.to_string(),
                                             host,
@@ -81,7 +105,7 @@ pub mod audit_handler {
         
         match writeln!(audit_file, "{}", params_list.join("[:|:]")) {
             Ok(_) => true,
-            Err(_e) => {println!("{}", _e); false}
+            Err(_e) => false
         }
     }
 

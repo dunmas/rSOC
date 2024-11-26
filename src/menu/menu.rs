@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use crate::file_manager::file_manager::audit_handler::{change_audit_status, prepare_file_mutexes};
+use crate::file_manager::file_manager::audit_handler::{change_audit_status, prepare_file_mutexes, get_10_latest_audit_messages};
 use crate::structs::soc_structs::multithread::FileMutexes;
 use crate::structs::soc_structs::{SessionStatus, LogFiles};
 
@@ -136,6 +136,7 @@ fn audit_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes) {
                 pause!();
             }
             "2" => {
+                get_10_latest_audit_messages(file_mutexes);
                 println!("check log");
                 pause!();
             }
