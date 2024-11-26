@@ -17,7 +17,7 @@ pub mod multithread{
     use std::sync::{Arc, Mutex};
 
     pub struct FileMutexes {
-        pub audit_file: Arc<Mutex<std::fs::File>>,
-        pub event_file: Arc<Mutex<std::fs::File>>,
+        pub audit_mutex: Arc<Mutex<std::fs::File>>,
+        pub event_mutex: Arc<Mutex<std::fs::File>>,
     }
 }

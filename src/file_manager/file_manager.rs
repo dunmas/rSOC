@@ -12,7 +12,7 @@ pub mod user_file_handler {
         if !path.exists() {
             println!("User file existance error. Creating default file.");
 
-            let mut f = File::create(user_file).unwrap();
+            let mut f = File::create(path).unwrap();
             let _ = f.write_all(BASIC_USER.as_bytes()) ;
         }
 
@@ -38,8 +38,34 @@ pub mod user_file_handler {
 
 pub mod audit_handler {
     use std::time::SystemTime;
+    use std::fs::File;
+    use std::path::Path;
+    use std::sync::{Arc, Mutex};
+
     use crate::structs::soc_structs::{AuditEventType, LogFiles};
     use crate::structs::soc_structs::multithread::FileMutexes;
+
+    pub fn prepare_file_mutexes(log_files: &LogFiles) -> FileMutexes {
+        let audit_path = Path::new(&log_files.audit_file);
+        let event_path = Path::new(&log_files.event_file);
+
+        if !audit_path.exists() {
+            let _f = File::create(audit_path).unwrap();
+        }
+
+        if !event_path.exists() {
+            let _f = File::create(event_path).unwrap();
+        }
+
+        let audit_file = File::open(audit_path).expect("Audit file opening error.");
+        let event_file = File::open(event_path).expect("Audit file opening error.");
+
+        FileMutexes {
+            audit_mutex: Arc::new(Mutex::new(audit_file)),
+            event_mutex: Arc::new(Mutex::new(event_file)),
+        }
+
+    }
 
     pub fn get_10_latest_audit_messages() {
 
@@ -47,6 +73,9 @@ pub mod audit_handler {
 
     pub fn write_audit_event(timestamp: SystemTime, host: String, user: String, event_type: AuditEventType, message: String, log_files: &LogFiles) -> bool {
         let status: bool = true;
+
+        // let mut file = file.lock().unwrap(); // Блокируем доступ к файлу
+        // writeln!(file, "{}", content)?;
         status
     }
 
