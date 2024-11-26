@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 
 use crate::file_manager::file_manager::audit_handler::change_audit_status;
-use crate::structs::soc_structs::SessionStatus;
+use crate::structs::soc_structs::{SessionStatus, LogFiles};
 
 const MAIN_MENU: &str = "\
         ------------------------------------------------------\n\
@@ -51,7 +51,7 @@ macro_rules! pause {
     }};
 }
 
-pub fn main_menu(session_status: &mut SessionStatus) {
+pub fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles) {
     loop {
         println!("{}", MAIN_MENU);
         let choise = get_user_choice();
@@ -59,7 +59,7 @@ pub fn main_menu(session_status: &mut SessionStatus) {
         match choise.as_str() {
             "1" => event_menu(),
             "2" => sensors_menu(),
-            "3" => audit_menu(session_status),
+            "3" => audit_menu(session_status, log_files),
             "4" => {
                 println!("Goodbye.");
                 break;
@@ -120,14 +120,14 @@ fn sensors_menu() {
     }
 }
 
-fn audit_menu(session_status: &mut SessionStatus) {
+fn audit_menu(session_status: &mut SessionStatus, log_files: &LogFiles) {
     loop {
         println!("{}", AUDIT_MENU);
         let choise = get_user_choice();
 
         match choise.as_str() {
             "1" => {
-                change_audit_status(&mut session_status.audit_status, session_status.host.clone(), session_status.user.clone());
+                change_audit_status(&mut session_status.audit_status, session_status.host.clone(), session_status.user.clone(), log_files);
                 println!("start/stop");
                 pause!();
             }

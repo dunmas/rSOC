@@ -7,7 +7,7 @@ mod structs;
 
 use menu::menu::main_menu;
 use file_manager::file_manager::user_file_handler;
-use structs::soc_structs::SessionStatus;
+use structs::soc_structs::{SessionStatus, LogFiles};
 
 const USER_LIST_FILE: &str = "users.txt";
 const AUDIT_LOG: &str = "audit.txt";
@@ -52,5 +52,5 @@ fn main() {
         audit_status: true
     };
 
-    main_menu(current_session);
+    main_menu(current_session, &LogFiles {audit_file: AUDIT_LOG.to_string(), event_file: EVENT_LOG.to_string()});
 }
