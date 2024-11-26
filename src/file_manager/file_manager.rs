@@ -38,9 +38,8 @@ pub mod user_file_handler {
 
 pub mod audit_handler {
     use std::time::SystemTime;
-    use std::fs::File;
     use std::io::Write;
-    use std::path::Path;
+    use std::fs::OpenOptions;
     use std::sync::{Arc, Mutex};
     use chrono::DateTime;
     use chrono::offset::Utc;
@@ -49,19 +48,16 @@ pub mod audit_handler {
     use crate::structs::soc_structs::multithread::FileMutexes;
 
     pub fn prepare_file_mutexes(log_files: &LogFiles) -> FileMutexes {
-        let audit_path = Path::new(&log_files.audit_file);
-        let event_path = Path::new(&log_files.event_file);
-
-        if !audit_path.exists() {
-            let _f = File::create(audit_path).unwrap();
-        }
-
-        if !event_path.exists() {
-            let _f = File::create(event_path).unwrap();
-        }
-
-        let audit_file = File::open(audit_path).expect("Audit file opening error.");
-        let event_file = File::open(event_path).expect("Audit file opening error.");
+        let audit_file = OpenOptions::new()
+                                .append(true)
+                                .create(true)
+                                .open(&log_files.audit_file)
+                                .unwrap();
+        let event_file = OpenOptions::new()
+                                .append(true)
+                                .create(true)
+                                .open(&log_files.event_file)
+                                .unwrap();
 
         FileMutexes {
             audit_mutex: Arc::new(Mutex::new(audit_file)),
@@ -85,7 +81,7 @@ pub mod audit_handler {
         
         match writeln!(audit_file, "{}", params_list.join("[:|:]")) {
             Ok(_) => true,
-            Err(_e) => false
+            Err(_e) => {println!("{}", _e); false}
         }
     }
 

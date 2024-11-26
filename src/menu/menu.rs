@@ -132,7 +132,7 @@ fn audit_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes) {
             "1" => {
                 let operation_status: (bool, bool) = change_audit_status(&mut session_status.audit_status, session_status.host.clone(), session_status.user.clone(), file_mutexes);
                 if !operation_status.1 {println!("Error occured with audit logging."); break;}
-                if !operation_status.0 {println!("System audit enabled")} else {println!("System audit enabled")};
+                if !operation_status.0 {println!("System audit disabled")} else {println!("System audit enabled")};
                 pause!();
             }
             "2" => {
