@@ -38,12 +38,11 @@ pub mod user_file_handler {
 
 pub mod audit_handler {
     use std::time::SystemTime;
+    use chrono::DateTime;
+    use chrono::offset::Utc;
     use std::io::{Read, Write};
     use std::fs::OpenOptions;
     use std::sync::{Arc, Mutex};
-    use chrono::DateTime;
-    use chrono::offset::Utc;
-
     use std::mem;
     
     use crate::structs::soc_structs::{AuditEventType, LogFiles};
@@ -151,5 +150,22 @@ pub mod audit_handler {
 }
 
 pub mod event_handler {
+    use std::time::SystemTime;
+    use chrono::DateTime;
+    use chrono::offset::Utc;
 
+    use crate::structs::soc_structs::multithread::FileMutexes;
+    use crate::structs::soc_structs::net_level_rules::net_level_rules;
+
+    pub fn get_10_latest_audit_messages(file_mutexes: &FileMutexes, sensor: String) {
+
+    }
+
+    pub fn write_security_event(timestamp: SystemTime, host: String, rule: net_level_rules, file_mutexes: &FileMutexes, log_file: &String) {
+        
+    }
+
+    fn console_output(data_vec: Vec<String>) {
+
+    }
 }

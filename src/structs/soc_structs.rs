@@ -38,6 +38,33 @@ pub mod multithread{
     }
 }
 
+// "event_type" field is required
+pub mod net_level_rules {
+    use super::SecurityEventType;
+
+    pub struct net_level_rules {
+        ip_v4: IPv4Rule,
+    }
+
+    pub struct IPv4Rule {
+        name: String,
+        net_layer: String,
+        src_ip: String,
+        dst_ip: String,
+        ttl: String,
+        checksum: String,
+        src_port: String,
+        dst_port: String,
+        payload_contains: String,
+        description: String,
+        event_type: SecurityEventType
+    }
+}
+
+pub mod host_level_rules {
+
+}
+
 impl fmt::Display for AuditEventType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
