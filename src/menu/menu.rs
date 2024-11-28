@@ -137,7 +137,6 @@ fn audit_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, lo
             }
             "2" => {
                 get_10_latest_audit_messages(file_mutexes);
-                println!("check log");
                 pause!();
             }
             "3" => break,

@@ -37,15 +37,12 @@ pub mod user_file_handler {
 }
 
 pub mod audit_handler {
-    use std::string;
     use std::time::SystemTime;
     use std::io::{Read, Write};
-    use std::fs::{OpenOptions, File};
+    use std::fs::OpenOptions;
     use std::sync::{Arc, Mutex};
     use chrono::DateTime;
     use chrono::offset::Utc;
-    use futures::io::BufReader;
-    use futures::lock::MutexGuard;
 
     use std::mem;
     
@@ -75,7 +72,6 @@ pub mod audit_handler {
 
     pub fn get_10_latest_audit_messages(file_mutexes: &FileMutexes) {
         let mut audit_file = file_mutexes.audit_mutex.lock().unwrap();
-        let mut result: String = "".to_owned(); 
         let buf: &mut String = &mut "".to_owned(); 
 
         match (*audit_file).read_to_string(buf){
@@ -90,7 +86,7 @@ pub mod audit_handler {
                     top_count = top_count - 1;
                 }
 
-                println!("{}", data_vec.join("\n"));
+                console_output(data_vec);
             },
             Err(e) => println!("Error occured while reading from audit file: {}", e)
         }
@@ -99,7 +95,7 @@ pub mod audit_handler {
     pub fn write_audit_event(timestamp: SystemTime, host: String, user: String, event_type: AuditEventType, message: String, file_mutexes: &FileMutexes, log_file: &String) -> bool {
         let mut audit_file = file_mutexes.audit_mutex.lock().unwrap();
         let time_string: DateTime<Utc> = timestamp.into();
-        let params_list = vec![time_string.to_string(),
+        let params_list = vec![time_string.format("%d-%m-%Y %H:%M").to_string(),
                                             host,
                                             user,
                                             event_type.to_string(),
@@ -110,13 +106,15 @@ pub mod audit_handler {
             Err(_e) => false
         };
 
-        let _ = mem::replace(&mut *audit_file,
+        if result {
+            let _ = mem::replace(&mut *audit_file,
             OpenOptions::new()
             .append(true)
             .create(true)
             .read(true)
             .open(&log_file)
             .unwrap());
+        }
 
         result
     }
@@ -129,6 +127,26 @@ pub mod audit_handler {
         } else {
             (false, write_audit_event(SystemTime::now(), host, user, AuditEventType::AudDisable, "Audit disabled".to_string(), file_mutexes, log_file))
         }
+    }
+
+    fn console_output(data_vec: Vec<String>) {
+        let mut result = String::from("------------------------------------------------------------------------------------------\n\
+                                               || --- Time --- || --- Hostname --- || --- User --- || --- Event --- || --- Message --- ||\n\
+                                               ------------------------------------------------------------------------------------------\n");
+
+        for log_string in data_vec {
+            if log_string.is_empty() { continue; }
+
+            let string_params = log_string.split("[:|:]");
+
+            for param in string_params {
+                result = result + "|| " + param + " ";
+            }
+
+            result = result + "||\n";
+        }
+
+        print!("{}", result + "------------------------------------------------------------------------------------------\n");
     }
 }
 
