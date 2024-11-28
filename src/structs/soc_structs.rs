@@ -15,6 +15,18 @@ pub struct LogFiles {
 pub enum AuditEventType {
     AudEnable,
     AudDisable,
+    UserLogon,
+    FailLogon,
+    NetSenConn,
+    NetSenDisconn,
+    HostSenConn,
+    HostSenDisconn
+}
+
+#[derive(Debug)]
+pub enum SecurityEventType {
+    Warning,
+    Critical
 }
 
 pub mod multithread{
@@ -27,6 +39,12 @@ pub mod multithread{
 }
 
 impl fmt::Display for AuditEventType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl fmt::Display for SecurityEventType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
