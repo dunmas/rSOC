@@ -45,6 +45,9 @@ pub mod audit_handler {
     use chrono::DateTime;
     use chrono::offset::Utc;
     use futures::io::BufReader;
+    use futures::lock::MutexGuard;
+
+    use std::mem;
     
     use crate::structs::soc_structs::{AuditEventType, LogFiles};
     use crate::structs::soc_structs::multithread::FileMutexes;
@@ -77,24 +80,23 @@ pub mod audit_handler {
 
         match (*audit_file).read_to_string(buf){
             Ok(_) => {
-                // let strings:Vec<&str> = buf.split("\n").collect::<Vec<&str>>();
-                // let size = strings.len();
-                // let mut top_count = if size < 10 { size } else { 10 };
-                // let mut data_vec: Vec<String> = vec!["".to_string()];
+                let strings:Vec<&str> = buf.split("\n").collect::<Vec<&str>>();
+                let size = strings.len();
+                let mut top_count = if size < 11 { size } else { 11 };
+                let mut data_vec: Vec<String> = vec!["".to_string()];
                 
-                // while top_count > 0 {
-                //     // result = result + &strings[size - top_count] + &"\n".to_string();
-                //     data_vec.push(strings[size - top_count].to_string());
-                //     top_count = top_count - 1;
-                // }
+                while top_count > 0 {
+                    data_vec.push(strings[size - top_count].to_string());
+                    top_count = top_count - 1;
+                }
 
-                // println!("{}", data_vec.join("\n"));
+                println!("{}", data_vec.join("\n"));
             },
             Err(e) => println!("Error occured while reading from audit file: {}", e)
         }
     }
 
-    pub fn write_audit_event(timestamp: SystemTime, host: String, user: String, event_type: AuditEventType, message: String, file_mutexes: &FileMutexes) -> bool {
+    pub fn write_audit_event(timestamp: SystemTime, host: String, user: String, event_type: AuditEventType, message: String, file_mutexes: &FileMutexes, log_file: &String) -> bool {
         let mut audit_file = file_mutexes.audit_mutex.lock().unwrap();
         let time_string: DateTime<Utc> = timestamp.into();
         let params_list = vec![time_string.to_string(),
@@ -103,19 +105,29 @@ pub mod audit_handler {
                                             event_type.to_string(),
                                             message]; 
         
-        match writeln!(audit_file, "{}", params_list.join("[:|:]")) {
+        let result = match writeln!(audit_file, "{}", params_list.join("[:|:]")) {
             Ok(_) => true,
             Err(_e) => false
-        }
+        };
+
+        let _ = mem::replace(&mut *audit_file,
+            OpenOptions::new()
+            .append(true)
+            .create(true)
+            .read(true)
+            .open(&log_file)
+            .unwrap());
+
+        result
     }
 
-    pub fn change_audit_status(audit_status: &mut bool, host: String, user: String, file_mutexes: &FileMutexes) -> (bool, bool) {
+    pub fn change_audit_status(audit_status: &mut bool, host: String, user: String, file_mutexes: &FileMutexes, log_file: &String) -> (bool, bool) {
         *audit_status = !*audit_status;
 
         if *audit_status {
-            (true, write_audit_event(SystemTime::now(), host, user, AuditEventType::AudEnable, "Audit enabled".to_string(), file_mutexes))
+            (true, write_audit_event(SystemTime::now(), host, user, AuditEventType::AudEnable, "Audit enabled".to_string(), file_mutexes, log_file))
         } else {
-            (false, write_audit_event(SystemTime::now(), host, user, AuditEventType::AudDisable, "Audit disabled".to_string(), file_mutexes))
+            (false, write_audit_event(SystemTime::now(), host, user, AuditEventType::AudDisable, "Audit disabled".to_string(), file_mutexes, log_file))
         }
     }
 }

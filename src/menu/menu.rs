@@ -62,7 +62,7 @@ pub fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles) {
         match choise.as_str() {
             "1" => event_menu(),
             "2" => sensors_menu(),
-            "3" => audit_menu(session_status, &file_mutexes),
+            "3" => audit_menu(session_status, &file_mutexes, &log_files.audit_file),
             "4" => {
                 println!("Goodbye.");
                 break;
@@ -123,14 +123,14 @@ fn sensors_menu() {
     }
 }
 
-fn audit_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes) {
+fn audit_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String) {
     loop {
         println!("{}", AUDIT_MENU);
         let choise = get_user_choice();
 
         match choise.as_str() {
             "1" => {
-                let operation_status: (bool, bool) = change_audit_status(&mut session_status.audit_status, session_status.host.clone(), session_status.user.clone(), file_mutexes);
+                let operation_status: (bool, bool) = change_audit_status(&mut session_status.audit_status, session_status.host.clone(), session_status.user.clone(), file_mutexes, log_file);
                 if !operation_status.1 {println!("Error occured with audit logging."); break;}
                 if !operation_status.0 {println!("System audit disabled")} else {println!("System audit enabled")};
                 pause!();

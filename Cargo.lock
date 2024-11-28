@@ -569,6 +569,7 @@ dependencies = [
  "chrono",
  "clap",
  "futures",
+ "reopen",
  "sha2",
  "tokio",
  "tokio-tungstenite",
@@ -611,6 +612,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b6dfecf2c74bce2466cabf93f6664d6998a69eb21e39f4207930065b27b771f"
 dependencies = [
  "bitflags",
+]
+
+[[package]]
+name = "reopen"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff42cec3acf85845f5b18b3cbb7fec619ccbd4a349f6ecbe1c62ab46d4d98293"
+dependencies = [
+ "autocfg",
 ]
 
 [[package]]
