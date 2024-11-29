@@ -155,17 +155,45 @@ pub mod event_handler {
     use chrono::offset::Utc;
 
     use crate::structs::soc_structs::multithread::FileMutexes;
-    use crate::structs::soc_structs::net_level_rules::net_level_rules;
+    use crate::structs::soc_structs::net_level_rules::{self, net_level_rules as nl_rules, IPv4Rule};
 
     pub fn get_10_latest_audit_messages(file_mutexes: &FileMutexes, sensor: String) {
-
+        
     }
 
-    pub fn write_security_event(timestamp: SystemTime, host: String, rule: net_level_rules, file_mutexes: &FileMutexes, log_file: &String) {
+    pub fn write_security_event(timestamp: SystemTime, host: String, rules_struct: nl_rules, is_net_level: bool, file_mutexes: &FileMutexes, event_file: &String) {
+        let mut event_file = file_mutexes.event_mutex.lock().unwrap();
+        let time_string: DateTime<Utc> = timestamp.into();
+
+        // let 
+        // let params_list = vec![time_string.format("%d-%m-%Y %H:%M").to_string(),
+        //                                     host,
+        //                                     user,
+        //                                     event_type.to_string(),
+        //                                     message]; 
         
+        // let result = match writeln!(audit_file, "{}", params_list.join("[:|:]")) {
+        //     Ok(_) => true,
+        //     Err(_e) => false
+        // };
     }
 
     fn console_output(data_vec: Vec<String>) {
 
     }
+
+    fn get_params_from_rule_to_audit(rules_struct: nl_rules) -> Vec<String> {
+        let result: Vec<String> = Vec::new();
+
+        // TODO: find how to iterate on struct's field
+        // for rule_type in rules_struct {
+        //     if rule_type.name != "".to_string() {
+        //         result.append(rule_type.name);
+        //         result.append(rule_type.name);
+        //     }
+        // }
+
+        result
+    }
+
 }

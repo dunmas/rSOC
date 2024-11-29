@@ -59,6 +59,15 @@ pub mod net_level_rules {
         description: String,
         event_type: SecurityEventType
     }
+
+    // TODO: iterator realization for struct parsing
+    // impl Item for net_level_rules {
+
+    // }
+
+    // impl IntoIter for net_level_rules {
+
+    // }
 }
 
 pub mod host_level_rules {
