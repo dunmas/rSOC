@@ -59,15 +59,6 @@ pub mod net_level_rules {
         dst_port: String,
         payload_contains: String,
     }
-
-    // TODO: iterator realization for struct parsing
-    // impl Item for net_level_rules {
-
-    // }
-
-    // impl IntoIter for net_level_rules {
-
-    // }
 }
 
 pub mod host_level_rules {

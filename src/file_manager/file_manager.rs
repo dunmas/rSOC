@@ -153,6 +153,7 @@ pub mod event_handler {
     use std::time::SystemTime;
     use chrono::DateTime;
     use chrono::offset::Utc;
+    use std::collections::HashMap;
 
     use crate::structs::soc_structs::multithread::FileMutexes;
     use crate::structs::soc_structs::net_level_rules::{self, net_level_rules as nl_rules, IPv4Rule};
@@ -161,43 +162,50 @@ pub mod event_handler {
 
     }
 
-    pub fn write_security_event(timestamp: SystemTime, host: String, rules_struct: nl_rules, is_net_level: bool, file_mutexes: &FileMutexes, event_file: &String) {
+    pub fn write_security_event(timestamp: SystemTime, host: String, rule_map: HashMap<&str, &str>, is_net_level: bool, file_mutexes: &FileMutexes, event_file: &String) -> bool {
         let mut event_file = file_mutexes.event_mutex.lock().unwrap();
         let time_string: DateTime<Utc> = timestamp.into();
 
-        // let is_net_rule_string: String = if is_net_level { String::from("network") } else { String::from("host") };
-        
-        // first-level separator [:1:] inside strings
-        // let rule_params_string: String = get_params_from_rule_to_audit(rules_struct)
+        let is_net_rule_string: String = if is_net_level { String::from("network") } else { String::from("host") };
+        let mut rule_params_string: &str = "";
 
-        // let mut basic_list_string: String = vec![time_string.format("%d-%m-%Y %H:%M").to_string(),
-        //                                     host,
-        //                                     is_net_rule_string]
-        //                  .join("[:1:]")
-        //                  + String::from("[:2:]"); 
+        for entry in rule_map {
+            rule_params_string += entry.0 + "[:1:]" + entry.1;
+            rule_params_string += "[:2:]";
+        }
         
-        // let result = match writeln!(audit_file, "{}", basic_list_string + rule_params_string) {
-        //     Ok(_) => true,
-        //     Err(_e) => false
-        // };
+        let mut rps_len = rule_params_string.len();
+        
+        for _ in 0..4 {
+            rule_params_string.remove(rps_len - 1);
+            rps_len -= 1;
+        }
+
+        let mut basic_list_string: String = vec![time_string.format("%d-%m-%Y %H:%M").to_string(),
+                                            host,
+                                            is_net_rule_string]
+                         .join("[:2:]")
+                         + "[:3:]"; 
+        
+        let result = match writeln!(audit_file, "{}", basic_list_string + rule_params_string) {
+            Ok(_) => true,
+            Err(_e) => false
+        };
+
+        if result {
+            let _ = mem::replace(&mut *event_file,
+            OpenOptions::new()
+            .append(true)
+            .create(true)
+            .read(true)
+            .open(&log_file)
+            .unwrap());
+        }
+
+        result
     }
 
     fn console_output(data_vec: Vec<String>) {
 
     }
-
-    fn get_params_from_rule_to_audit(rules_struct: nl_rules) -> Vec<String> {
-        let result: Vec<String> = Vec::new();
-
-        // TODO: find how to iterate on struct's field
-        // for rule_type in rules_struct {
-        //     if rule_type.name != "".to_string() {
-        //         result.append(rule_type.name);
-        //         result.append(rule_type.name);
-        //     }
-        // }
-
-        result
-    }
-
 }
