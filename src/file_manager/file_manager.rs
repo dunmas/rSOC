@@ -158,21 +158,25 @@ pub mod event_handler {
     use crate::structs::soc_structs::net_level_rules::{self, net_level_rules as nl_rules, IPv4Rule};
 
     pub fn get_10_latest_audit_messages(file_mutexes: &FileMutexes, sensor: String) {
-        
+
     }
 
     pub fn write_security_event(timestamp: SystemTime, host: String, rules_struct: nl_rules, is_net_level: bool, file_mutexes: &FileMutexes, event_file: &String) {
         let mut event_file = file_mutexes.event_mutex.lock().unwrap();
         let time_string: DateTime<Utc> = timestamp.into();
 
-        // let 
-        // let params_list = vec![time_string.format("%d-%m-%Y %H:%M").to_string(),
-        //                                     host,
-        //                                     user,
-        //                                     event_type.to_string(),
-        //                                     message]; 
+        // let is_net_rule_string: String = if is_net_level { String::from("network") } else { String::from("host") };
         
-        // let result = match writeln!(audit_file, "{}", params_list.join("[:|:]")) {
+        // first-level separator [:1:] inside strings
+        // let rule_params_string: String = get_params_from_rule_to_audit(rules_struct)
+
+        // let mut basic_list_string: String = vec![time_string.format("%d-%m-%Y %H:%M").to_string(),
+        //                                     host,
+        //                                     is_net_rule_string]
+        //                  .join("[:1:]")
+        //                  + String::from("[:2:]"); 
+        
+        // let result = match writeln!(audit_file, "{}", basic_list_string + rule_params_string) {
         //     Ok(_) => true,
         //     Err(_e) => false
         // };

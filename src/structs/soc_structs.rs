@@ -48,7 +48,9 @@ pub mod net_level_rules {
 
     pub struct IPv4Rule {
         name: String,
-        net_layer: String,
+        description: String,
+        event_type: SecurityEventType,
+        trasport_protocol: String,
         src_ip: String,
         dst_ip: String,
         ttl: String,
@@ -56,8 +58,6 @@ pub mod net_level_rules {
         src_port: String,
         dst_port: String,
         payload_contains: String,
-        description: String,
-        event_type: SecurityEventType
     }
 
     // TODO: iterator realization for struct parsing
