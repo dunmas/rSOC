@@ -154,23 +154,46 @@ pub mod event_handler {
     use chrono::DateTime;
     use chrono::offset::Utc;
     use std::collections::HashMap;
+    use std::io::{Read, Write};
+    use std::fs::OpenOptions;
+    use std::mem;
 
     use crate::structs::soc_structs::multithread::FileMutexes;
     use crate::structs::soc_structs::net_level_rules::{self, net_level_rules as nl_rules, IPv4Rule};
 
     pub fn get_10_latest_audit_messages(file_mutexes: &FileMutexes, sensor: String) {
+        let mut event_file = file_mutexes.event_mutex.lock().unwrap();
+        let buf: &mut String = &mut "".to_owned(); 
 
+        match (*event_file).read_to_string(buf){
+            Ok(_) => {
+                let strings:Vec<&str> = buf.split("\n").collect::<Vec<&str>>();
+                let size = strings.len();
+                let mut top_count = if size < 11 { size } else { 11 };
+                let mut data_vec: Vec<String> = vec!["".to_string()];
+                
+                while top_count > 0 {
+                    data_vec.push(strings[size - top_count].to_string());
+                    top_count = top_count - 1;
+                }
+
+                console_output(data_vec);
+            },
+            Err(e) => println!("Error occured while reading from audit file: {}", e)
+        }
     }
 
-    pub fn write_security_event(timestamp: SystemTime, host: String, rule_map: HashMap<&str, &str>, is_net_level: bool, file_mutexes: &FileMutexes, event_file: &String) -> bool {
-        let mut event_file = file_mutexes.event_mutex.lock().unwrap();
+    pub fn write_security_event(timestamp: SystemTime, host: String, rule_map: HashMap<String, String>, is_net_level: bool, file_mutexes: &FileMutexes, event_file: &String) -> bool {
+        let mut event_file_mutex = file_mutexes.event_mutex.lock().unwrap();
         let time_string: DateTime<Utc> = timestamp.into();
 
         let is_net_rule_string: String = if is_net_level { String::from("network") } else { String::from("host") };
-        let mut rule_params_string: &str = "";
+        let mut rule_params_string: String = "".to_string();
 
         for entry in rule_map {
-            rule_params_string += entry.0 + "[:1:]" + entry.1;
+            rule_params_string.push_str(&entry.0);
+            rule_params_string += "[:1:]";
+            rule_params_string.push_str(&entry.1);
             rule_params_string += "[:2:]";
         }
         
@@ -186,19 +209,20 @@ pub mod event_handler {
                                             is_net_rule_string]
                          .join("[:2:]")
                          + "[:3:]"; 
-        
-        let result = match writeln!(audit_file, "{}", basic_list_string + rule_params_string) {
+        basic_list_string.push_str(&rule_params_string);
+
+        let result = match writeln!(event_file_mutex, "{}", basic_list_string) {
             Ok(_) => true,
             Err(_e) => false
         };
 
         if result {
-            let _ = mem::replace(&mut *event_file,
+            let _ = mem::replace(&mut *event_file_mutex,
             OpenOptions::new()
             .append(true)
             .create(true)
             .read(true)
-            .open(&log_file)
+            .open(&event_file)
             .unwrap());
         }
 
