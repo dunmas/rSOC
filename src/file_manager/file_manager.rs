@@ -142,7 +142,7 @@ pub mod audit_handler {
                 result = result + "|| " + param + " ";
             }
 
-            result = result + "||\n";
+            result += "||\n";
         }
 
         print!("{}", result + "------------------------------------------------------------------------------------------\n");
@@ -230,6 +230,29 @@ pub mod event_handler {
     }
 
     fn console_output(data_vec: Vec<String>) {
+        let mut result: String = String::new();
 
+        // Refactor to minimize memory usage
+        let string_separator = String::from("-------------------------------------------------------------------------------------------");
+        let header: String = String::from("-------------------------------------------------------------------------------------------\n\
+                                           || --------- Time --------- || --------- Hostname --------- || --------- Level --------- ||\n\
+                                           -------------------------------------------------------------------------------------------\n");
+
+        for raw_string in data_vec {
+            if raw_string.is_empty() { continue; }
+            let modules: Vec<&str> = raw_string.split("[:3:]").collect();
+
+            for param in modules[0].split("[:2:]") {
+                result = result + "|| --- " + param + " --- ";
+            }
+
+            result += "||\n";
+            result.push_str(&string_separator);
+            result += "|| -------------------- Rule content -------------------- ||\n";
+
+            for param_pair in modules[1].split("[:2:]") {
+                // parsing parameters
+            }
+        }
     }
 }
