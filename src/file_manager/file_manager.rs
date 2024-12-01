@@ -160,9 +160,16 @@ pub mod event_handler {
 
     use crate::structs::soc_structs::multithread::FileMutexes;
 
-    pub fn get_10_latest_audit_messages(file_mutexes: &FileMutexes, sensor: String) {
+    // sensor map: name (unique) -> ip
+    pub fn get_10_latest_audit_messages(file_mutexes: &FileMutexes, sensor: &str, sensor_map: HashMap<&str, &str>) {
         let mut event_file = file_mutexes.event_mutex.lock().unwrap();
         let buf: &mut String = &mut "".to_owned(); 
+        let mut sensor_flag = false;
+
+        if !sensor.is_empty() {
+            if !sensor_map.contains_key(&sensor) { println!("There is no such sensor."); return; }
+            sensor_flag = true;
+        }
 
         match (*event_file).read_to_string(buf){
             Ok(_) => {
@@ -171,6 +178,7 @@ pub mod event_handler {
                 let mut top_count = if size < 11 { size } else { 11 };
                 let mut data_vec: Vec<String> = vec!["".to_string()];
                 
+                // parse string and get sensor name if required
                 while top_count > 0 {
                     data_vec.push(strings[size - top_count].to_string());
                     top_count = top_count - 1;
@@ -182,7 +190,7 @@ pub mod event_handler {
         }
     }
 
-    pub fn write_security_event(timestamp: SystemTime, host: String, rule_map: HashMap<String, String>, is_net_level: bool, file_mutexes: &FileMutexes, event_file: &String) -> bool {
+    pub fn write_security_event(timestamp: SystemTime, host: String, rule_map: HashMap<&str, &str>, is_net_level: bool, file_mutexes: &FileMutexes, event_file: &String) -> bool {
         let mut event_file_mutex = file_mutexes.event_mutex.lock().unwrap();
         let time_string: DateTime<Utc> = timestamp.into();
 
