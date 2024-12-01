@@ -159,7 +159,6 @@ pub mod event_handler {
     use std::mem;
 
     use crate::structs::soc_structs::multithread::FileMutexes;
-    use crate::structs::soc_structs::net_level_rules::{self, net_level_rules as nl_rules, IPv4Rule};
 
     pub fn get_10_latest_audit_messages(file_mutexes: &FileMutexes, sensor: String) {
         let mut event_file = file_mutexes.event_mutex.lock().unwrap();
@@ -231,15 +230,13 @@ pub mod event_handler {
 
     fn console_output(data_vec: Vec<String>) {
         let mut result: String = String::new();
-
-        // Refactor to minimize memory usage
-        let string_separator = String::from("-------------------------------------------------------------------------------------------");
         let header: String = String::from("-------------------------------------------------------------------------------------------\n\
                                            || --------- Time --------- || --------- Hostname --------- || --------- Level --------- ||\n\
                                            -------------------------------------------------------------------------------------------\n");
 
         for raw_string in data_vec {
             if raw_string.is_empty() { continue; }
+            result.push_str(&header);
             let modules: Vec<&str> = raw_string.split("[:3:]").collect();
 
             for param in modules[0].split("[:2:]") {
@@ -247,12 +244,19 @@ pub mod event_handler {
             }
 
             result += "||\n";
-            result.push_str(&string_separator);
             result += "|| -------------------- Rule content -------------------- ||\n";
 
             for param_pair in modules[1].split("[:2:]") {
-                // parsing parameters
+                let pair_vec: Vec<&str> = param_pair.split("[:1:]").collect();
+
+                result += pair_vec[0];
+                result += " : ";
+                result += pair_vec[1];
+                result += "\n";
             }
         }
+
+        result += "-------------------------------------------------------------------------------------------\n";
+        println!("{}", result);
     }
 }

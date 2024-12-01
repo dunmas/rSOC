@@ -42,7 +42,7 @@ pub mod multithread{
 pub mod net_level_rules {
     use super::SecurityEventType;
 
-    pub struct net_level_rules {
+    pub struct NetLevelRules {
         ip_v4: IPv4Rule,
     }
 
