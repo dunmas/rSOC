@@ -156,18 +156,18 @@ pub mod event_handler {
     use std::collections::HashMap;
     use std::io::{Read, Write};
     use std::fs::OpenOptions;
-    use std::mem;
+    use std::{mem, string};
 
     use crate::structs::soc_structs::multithread::FileMutexes;
 
     // sensor map: name (unique) -> ip
-    pub fn get_10_latest_audit_messages(file_mutexes: &FileMutexes, sensor: &str, sensor_map: HashMap<&str, &str>) {
+    pub fn get_10_latest_audit_messages(file_mutexes: &FileMutexes, sensor_hostname: &str, sensor_map: HashMap<&str, &str>) {
         let mut event_file = file_mutexes.event_mutex.lock().unwrap();
         let buf: &mut String = &mut "".to_owned(); 
         let mut sensor_flag = false;
 
-        if !sensor.is_empty() {
-            if !sensor_map.contains_key(&sensor) { println!("There is no such sensor."); return; }
+        if !sensor_hostname.is_empty() {
+            if !sensor_map.contains_key(&sensor_hostname) { println!("There is no such sensor."); return; }
             sensor_flag = true;
         }
 
@@ -175,13 +175,34 @@ pub mod event_handler {
             Ok(_) => {
                 let strings:Vec<&str> = buf.split("\n").collect::<Vec<&str>>();
                 let size = strings.len();
-                let mut top_count = if size < 11 { size } else { 11 };
+                let top_count = if size < 11 { size } else { 11 };
                 let mut data_vec: Vec<String> = vec!["".to_string()];
                 
+                if sensor_flag {
+                    let mut sensor_count = 0;
+                    let mut index = 1;
+
+                    while sensor_count < top_count && index < size {
+                        if strings[size - index].is_empty() { index += 1; continue; }
+
+                        let splitted_by_max_level: Vec<&str> = strings[size - index].split("[:3:]"). collect();
+                        let service_data_vec: Vec<&str> = splitted_by_max_level[0].split("[:2:]").collect();
+
+                        if service_data_vec[1] == sensor_hostname {
+                            data_vec.push(strings[size - index].to_string());
+                            sensor_count += 1;
+                        }
+
+                        index += 1;
+                    }
+
+                    console_output(data_vec);
+                    return;
+                }
+
                 // parse string and get sensor name if required
-                while top_count > 0 {
-                    data_vec.push(strings[size - top_count].to_string());
-                    top_count = top_count - 1;
+                for i in 1..top_count {
+                    data_vec.push(strings[size - i].to_string());
                 }
 
                 console_output(data_vec);
