@@ -4,6 +4,9 @@ use crate::file_manager::file_manager::audit_handler::{change_audit_status, prep
 use crate::structs::soc_structs::multithread::FileMutexes;
 use crate::structs::soc_structs::{SessionStatus, LogFiles};
 
+//test
+use crate::file_manager::file_manager::event_handler::{write_security_event, get_10_latest_event_messages};
+
 const MAIN_MENU: &str = "\
         ------------------------------------------------------\n\
         Hello! This is rSOC Management Server command console.\n\
@@ -60,7 +63,7 @@ pub fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles) {
         let choise = get_user_choice();
 
         match choise.as_str() {
-            "1" => event_menu(),
+            "1" => event_menu(session_status, &file_mutexes, &log_files.event_file),
             "2" => sensors_menu(),
             "3" => audit_menu(session_status, &file_mutexes, &log_files.audit_file),
             "4" => {
@@ -79,13 +82,14 @@ fn get_user_choice() -> String {
     choice.trim().to_string()
 }
 
-fn event_menu() {
+fn event_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, event_file: &String) {
     loop {
         println!("{}", EVENT_MENU);
         let choise = get_user_choice();
 
         match choise.as_str() {
             "1" => {
+                get_10_latest_event_messages(file_mutexes,"", &session_status.sensor_list);
                 println!("overall");
                 pause!();
             }

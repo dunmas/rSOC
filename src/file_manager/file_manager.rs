@@ -36,6 +36,15 @@ pub mod user_file_handler {
     }
 }
 
+pub mod sensor_file_handler {
+    use std::collections::HashMap;
+
+    pub fn get_sensors_map(sensors_file: &str) -> HashMap<String, (String, String)> {
+        let result: HashMap<String, (String, String)> = HashMap::new();
+        result
+    }
+}
+
 pub mod audit_handler {
     use std::time::SystemTime;
     use chrono::DateTime;
@@ -161,13 +170,13 @@ pub mod event_handler {
     use crate::structs::soc_structs::multithread::FileMutexes;
 
     // sensor map: name (unique) -> ip
-    pub fn get_10_latest_audit_messages(file_mutexes: &FileMutexes, sensor_hostname: &str, sensor_map: HashMap<&str, &str>) {
+    pub fn get_10_latest_event_messages(file_mutexes: &FileMutexes, sensor_hostname: &str, sensor_map: &HashMap<String, (String, String)>) {
         let mut event_file = file_mutexes.event_mutex.lock().unwrap();
         let buf: &mut String = &mut "".to_owned(); 
         let mut sensor_flag = false;
 
         if !sensor_hostname.is_empty() {
-            if !sensor_map.contains_key(&sensor_hostname) { println!("There is no such sensor."); return; }
+            if !sensor_map.contains_key(&sensor_hostname.to_string()) { println!("There is no such sensor."); return; }
             sensor_flag = true;
         }
 

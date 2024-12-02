@@ -1,9 +1,11 @@
 use std::fmt;
+use std::collections::HashMap;
 
 pub struct SessionStatus {
     pub host: String,
     pub user: String,
     pub audit_status: bool,
+    pub sensor_list: HashMap<String, (String, String)>,
 }
 
 pub struct LogFiles {
