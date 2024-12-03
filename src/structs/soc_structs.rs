@@ -11,6 +11,7 @@ pub struct SessionStatus {
 pub struct LogFiles {
     pub audit_file: String,
     pub event_file: String,
+    pub rules_file: String,
 }
 
 #[derive(Debug)]
@@ -37,29 +38,6 @@ pub mod multithread{
     pub struct FileMutexes {
         pub audit_mutex: Arc<Mutex<std::fs::File>>,
         pub event_mutex: Arc<Mutex<std::fs::File>>,
-    }
-}
-
-// "event_type" field is required
-pub mod net_level_rules {
-    use super::SecurityEventType;
-
-    pub struct NetLevelRules {
-        ip_v4: IPv4Rule,
-    }
-
-    pub struct IPv4Rule {
-        name: String,
-        description: String,
-        event_type: SecurityEventType,
-        trasport_protocol: String,
-        src_ip: String,
-        dst_ip: String,
-        ttl: String,
-        checksum: String,
-        src_port: String,
-        dst_port: String,
-        payload_contains: String,
     }
 }
 

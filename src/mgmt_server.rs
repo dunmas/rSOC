@@ -15,6 +15,7 @@ use structs::soc_structs::{SessionStatus, LogFiles};
 const USER_LIST_FILE: &str = "users.txt";
 const AUDIT_LOG: &str = "audit.txt";
 const EVENT_LOG: &str = "events.txt";
+const RULES_FILE: &str = "rules.txt";
 const HOSTNAME: &str = "MAMA-1 | Control centre";
 
 fn main() {
@@ -63,5 +64,7 @@ fn main() {
         sensor_list: sensors
     };
 
-    main_menu(current_session, &LogFiles {audit_file: AUDIT_LOG.to_string(), event_file: EVENT_LOG.to_string()});
+    main_menu(current_session, &LogFiles {audit_file: AUDIT_LOG.to_string(),
+                                                                event_file: EVENT_LOG.to_string(),
+                                                                rules_file: RULES_FILE.to_string()});
 }
