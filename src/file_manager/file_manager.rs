@@ -36,20 +36,11 @@ pub mod user_file_handler {
     }
 }
 
-pub mod sensor_file_handler {
-    use std::collections::HashMap;
-
-    pub fn get_sensors_map(sensors_file: &str) -> HashMap<String, (String, String)> {
-        let result: HashMap<String, (String, String)> = HashMap::new();
-        result
-    }
-}
-
 pub mod audit_handler {
     use std::time::SystemTime;
     use chrono::DateTime;
     use chrono::offset::Utc;
-    use std::io::{Read, Write};
+    use std::io::{Read, Seek, Write};
     use std::fs::OpenOptions;
     use std::sync::{Arc, Mutex};
     use std::mem;
@@ -95,6 +86,8 @@ pub mod audit_handler {
                 }
 
                 console_output(data_vec);
+                let _ = audit_file.rewind();
+                return;
             },
             Err(e) => println!("Error occured while reading from audit file: {}", e)
         }
@@ -163,20 +156,19 @@ pub mod event_handler {
     use chrono::DateTime;
     use chrono::offset::Utc;
     use std::collections::HashMap;
-    use std::io::{Read, Write};
+    use std::io::{Read, Seek, Write};
     use std::fs::OpenOptions;
-    use std::{mem, string};
+    use std::mem;
 
     use crate::structs::soc_structs::multithread::FileMutexes;
 
     // sensor map: name (unique) -> ip
-    pub fn get_10_latest_event_messages(file_mutexes: &FileMutexes, sensor_hostname: &str, sensor_map: &HashMap<String, (String, String)>) {
+    pub fn get_10_latest_event_messages(file_mutexes: &FileMutexes, sensor_hostname: &str) {
         let mut event_file = file_mutexes.event_mutex.lock().unwrap();
         let buf: &mut String = &mut "".to_owned(); 
         let mut sensor_flag = false;
 
         if !sensor_hostname.is_empty() {
-            if !sensor_map.contains_key(&sensor_hostname.to_string()) { println!("There is no such sensor."); return; }
             sensor_flag = true;
         }
 
@@ -206,6 +198,8 @@ pub mod event_handler {
                     }
 
                     console_output(data_vec);
+                    //refresh file_pointer
+                    let _ = event_file.rewind();
                     return;
                 }
 
@@ -215,6 +209,9 @@ pub mod event_handler {
                 }
 
                 console_output(data_vec);
+
+                //refresh file_pointer
+                let _ = event_file.rewind();
             },
             Err(e) => println!("Error occured while reading from audit file: {}", e)
         }
@@ -236,12 +233,12 @@ pub mod event_handler {
         
         let mut rps_len = rule_params_string.len();
         
-        for _ in 0..4 {
+        for _ in 0..5 {
             rule_params_string.remove(rps_len - 1);
             rps_len -= 1;
         }
 
-        let mut basic_list_string: String = vec![time_string.format("%d-%m-%Y %H:%M").to_string(),
+        let mut basic_list_string: String = vec![time_string.format("%d-%m-%Y %H:%M:%S").to_string(),
                                             host,
                                             is_net_rule_string]
                          .join("[:2:]")
@@ -269,8 +266,7 @@ pub mod event_handler {
     fn console_output(data_vec: Vec<String>) {
         let mut result: String = String::new();
         let header: String = String::from("-------------------------------------------------------------------------------------------\n\
-                                           || --------- Time --------- || --------- Hostname --------- || --------- Level --------- ||\n\
-                                           -------------------------------------------------------------------------------------------\n");
+                                           || -------------------------------- Time, Hostname, Level ------------------------------ ||\n");
 
         for raw_string in data_vec {
             if raw_string.is_empty() { continue; }
@@ -282,7 +278,7 @@ pub mod event_handler {
             }
 
             result += "||\n";
-            result += "|| -------------------- Rule content -------------------- ||\n";
+            result += "|| --------------------------------------- Rule content -------------------------------- ||\n";
 
             for param_pair in modules[1].split("[:2:]") {
                 let pair_vec: Vec<&str> = param_pair.split("[:1:]").collect();
@@ -294,7 +290,6 @@ pub mod event_handler {
             }
         }
 
-        result += "-------------------------------------------------------------------------------------------\n";
         println!("{}", result);
     }
 }

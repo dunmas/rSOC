@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::{self, Write};
 
 use crate::file_manager::file_manager::audit_handler::{change_audit_status, prepare_file_mutexes, get_10_latest_audit_messages};
@@ -5,7 +6,7 @@ use crate::structs::soc_structs::multithread::FileMutexes;
 use crate::structs::soc_structs::{SessionStatus, LogFiles};
 
 //test
-use crate::file_manager::file_manager::event_handler::{write_security_event, get_10_latest_event_messages};
+use crate::file_manager::file_manager::event_handler::get_10_latest_event_messages;
 
 const MAIN_MENU: &str = "\
         ------------------------------------------------------\n\
@@ -63,7 +64,7 @@ pub fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles) {
         let choise = get_user_choice();
 
         match choise.as_str() {
-            "1" => event_menu(session_status, &file_mutexes, &log_files.event_file),
+            "1" => event_menu(&file_mutexes),
             "2" => sensors_menu(),
             "3" => audit_menu(session_status, &file_mutexes, &log_files.audit_file),
             "4" => {
@@ -82,19 +83,20 @@ fn get_user_choice() -> String {
     choice.trim().to_string()
 }
 
-fn event_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, event_file: &String) {
+fn event_menu(file_mutexes: &FileMutexes) {
     loop {
         println!("{}", EVENT_MENU);
         let choise = get_user_choice();
 
         match choise.as_str() {
             "1" => {
-                get_10_latest_event_messages(file_mutexes,"", &session_status.sensor_list);
-                println!("overall");
+                get_10_latest_event_messages(file_mutexes,"");
                 pause!();
             }
             "2" => {
-                println!("sensor");
+                println!("Please, enter name of the sensor:");
+                let required_sensor = get_user_choice();
+                get_10_latest_event_messages(file_mutexes,&required_sensor);
                 pause!();
             }
             "3" => break,

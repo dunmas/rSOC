@@ -10,11 +10,9 @@ mod structs;
 
 use menu::menu::main_menu;
 use file_manager::file_manager::user_file_handler;
-use file_manager::file_manager::sensor_file_handler;
 use structs::soc_structs::{SessionStatus, LogFiles};
 
 const USER_LIST_FILE: &str = "users.txt";
-const SENSOR_LIST_FILE: &str = "sensors.txt";
 const AUDIT_LOG: &str = "audit.txt";
 const EVENT_LOG: &str = "events.txt";
 const HOSTNAME: &str = "MAMA-1 | Control centre";
@@ -55,16 +53,14 @@ fn main() {
 
     // test block
     let mut sensors: HashMap<String, (String, String)> = HashMap::new();
-    sensors.insert("Giacynt-1".to_string(), ("net".to_string(), "192.168.17.5".to_string()));
-    sensors.insert("Olkha-1".to_string(), ("host".to_string(), "172.16.5.1".to_string()));
+    sensors.insert("bobr".to_string(), ("host".to_string(), "192.168.17.5".to_string()));
+    sensors.insert("GALYA".to_string(), ("host".to_string(), "172.16.5.1".to_string()));
     
     let current_session: &mut SessionStatus = &mut SessionStatus {
         host: HOSTNAME.to_string(),
         user: input_username.to_string(),
         audit_status: true,
-        //for test purposes
-        sensor_list: sensors,
-        //sensor_list: sensor_file_handler::get_sensors_map(SENSOR_LIST_FILE)
+        sensor_list: sensors
     };
 
     main_menu(current_session, &LogFiles {audit_file: AUDIT_LOG.to_string(), event_file: EVENT_LOG.to_string()});
