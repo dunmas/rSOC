@@ -1,11 +1,8 @@
-use std::collections::HashMap;
 use std::io::{self, Write};
 
 use crate::file_manager::file_manager::audit_handler::{change_audit_status, prepare_file_mutexes, get_10_latest_audit_messages};
 use crate::structs::soc_structs::multithread::FileMutexes;
 use crate::structs::soc_structs::{SessionStatus, LogFiles};
-
-//test
 use crate::file_manager::file_manager::event_handler::get_10_latest_event_messages;
 
 const MAIN_MENU: &str = "\
@@ -44,9 +41,8 @@ const AUDIT_MENU: &str = "\
 macro_rules! pause {
     () => {{
         println!(
-            "\
-                ------------------------------------------------------\n\
-                Press enter to continue..."
+            "------------------------------------------------------\n\
+             Press enter to continue..."
         );
         let mut buffer = String::new();
 

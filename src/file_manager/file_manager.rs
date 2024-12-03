@@ -96,7 +96,7 @@ pub mod audit_handler {
     pub fn write_audit_event(timestamp: SystemTime, host: String, user: String, event_type: AuditEventType, message: String, file_mutexes: &FileMutexes, log_file: &String) -> bool {
         let mut audit_file = file_mutexes.audit_mutex.lock().unwrap();
         let time_string: DateTime<Utc> = timestamp.into();
-        let params_list = vec![time_string.format("%d-%m-%Y %H:%M").to_string(),
+        let params_list = vec![time_string.format("%d-%m-%Y %H:%M:%S").to_string(),
                                             host,
                                             user,
                                             event_type.to_string(),
