@@ -4,6 +4,7 @@ use crate::file_manager::file_manager::audit_handler::{change_audit_status, prep
 use crate::structs::soc_structs::multithread::FileMutexes;
 use crate::structs::soc_structs::{SessionStatus, LogFiles};
 use crate::file_manager::file_manager::event_handler::get_10_latest_event_messages;
+use crate::sensor_handler::rule_handler::{get_rules_list, add_rule, delete_rule};
 
 const MAIN_MENU: &str = "\
         ------------------------------------------------------\n\
@@ -36,6 +37,14 @@ const AUDIT_MENU: &str = "\
             1) Start/stop system audit\n\
             2) Check audit log (10 latest)\n\
             3) Back\n\
+            ------------------------------------------------------";
+const RULE_MENU: &str = "\
+            ------------------------------------------------------\n\
+            Select option:\n\
+            1) Get rules list\n\
+            2) Add rule\n\
+            3) Delete rule\n\
+            4) Back\n\
             ------------------------------------------------------";
 
 macro_rules! pause {
@@ -142,6 +151,30 @@ fn audit_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, lo
                 pause!();
             }
             "3" => break,
+            _ => println!("Undefined option. Try again."),
+        }
+    }
+}
+
+fn rule_menu(rule_file: &String) {
+    loop {
+        println!("{}", RULE_MENU);
+        let choise = get_user_choice();
+
+        match choise.as_str() {
+            "1" => {
+                // get_rules_list(&rule_file);
+                pause!();
+            }
+            "2" => {
+                // add_rule(&rule_file);
+                pause!();
+            }
+            "3" => {
+                // delete_rule();
+                pause!();
+            }
+            "4" => break,
             _ => println!("Undefined option. Try again."),
         }
     }

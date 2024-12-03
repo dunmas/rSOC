@@ -7,6 +7,7 @@ use sha2::{Sha256, Digest};
 mod menu;
 mod file_manager;
 mod structs;
+mod sensor_handler;
 
 use menu::menu::main_menu;
 use file_manager::file_manager::user_file_handler;
