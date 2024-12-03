@@ -1,4 +1,5 @@
 use std::io::{self, Write};
+use std::collections::HashMap;
 
 use crate::file_manager::file_manager::audit_handler::{change_audit_status, prepare_file_mutexes, get_10_latest_audit_messages};
 use crate::structs::soc_structs::multithread::FileMutexes;
@@ -14,7 +15,8 @@ const MAIN_MENU: &str = "\
         1) Event log\n\
         2) Sensors settings\n\
         3) Audit settings\n\
-        4) Exit\n\
+        4) Rules settings\n\
+        5) Exit\n\
         ------------------------------------------------------";
 const EVENT_MENU: &str = "\
             ------------------------------------------------------\n\
@@ -63,6 +65,7 @@ macro_rules! pause {
 
 pub fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles) {
     let file_mutexes: FileMutexes = prepare_file_mutexes(log_files);
+    // add rules file checker
 
     loop {
         println!("{}", MAIN_MENU);
@@ -72,7 +75,8 @@ pub fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles) {
             "1" => event_menu(&file_mutexes),
             "2" => sensors_menu(),
             "3" => audit_menu(session_status, &file_mutexes, &log_files.audit_file),
-            "4" => {
+            "4" => rule_menu(&log_files.rules_file),
+            "5" => {
                 println!("Goodbye.");
                 break;
             }
@@ -162,20 +166,53 @@ fn rule_menu(rule_file: &String) {
         let choise = get_user_choice();
 
         match choise.as_str() {
+            //get rules
             "1" => {
-                // get_rules_list(&rule_file);
+                println!("What type of rules you want to get? (net/host)");
+                let rule_level = get_user_choice();
+
+                match rule_level.as_str() {
+                    "net" => { get_rules_list("net", rule_file); },
+                    "host" => { get_rules_list("host", rule_file); },
+                    _ => { println!("Undefined rule level. Try 'net' or 'host'") },
+                }
                 pause!();
             }
+            // add rule
             "2" => {
-                // add_rule(&rule_file);
+                let _rule_map = add_rule_interface(&rule_file);
+                // add_rule(_rule_map.0["rule_level"],
+                //           _rule_map.0["rule_name"], 
+                //           _rule_map.0["rule_description"],
+                //           _rule_map.0["add_rule_level"],
+                //           &_rule_map.1,
+                //           rule_file);
                 pause!();
             }
+            // delete rule
             "3" => {
-                // delete_rule();
+                println!("What type of rule you want to delete? (net/host)");
+                let rule_level = get_user_choice();
+
+                if rule_level != "net" && rule_level != "host" {
+                    println!("Undefined rule level. Try 'net' or 'host'");
+                    continue;
+                }
+
+                println!("Enter rule hash (from rules list):");
+                let rule_hash = get_user_choice();
+                // delete_rule(&rule_level, &rule_hash, rule_file);
                 pause!();
             }
             "4" => break,
             _ => println!("Undefined option. Try again."),
         }
     }
+}
+
+fn add_rule_interface(rules_file: &String) -> (HashMap<&str, &str>, HashMap<&str, &str>) {
+    let basic_fields: HashMap<&str, &str> = HashMap::new();
+    let optional_fields_map: HashMap<&str, &str> = HashMap::new();
+
+    (basic_fields, optional_fields_map)
 }
