@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::{Read, Seek, Write};
 
-fn get_rules_vec(rules_file: &String) -> Vec<(String, (String, (String, String)))> {
+fn get_rules_vec(rules_file: &String) -> HashMap<String, Vec<(String, (String, String))>> {
     let mut file = OpenOptions::new()
                         .append(true)
                         .create(true)
@@ -11,14 +11,16 @@ fn get_rules_vec(rules_file: &String) -> Vec<(String, (String, (String, String))
                         .open(&rules_file)
                         .unwrap();
     let buf: &mut String = &mut "".to_owned();
-    let mut result: Vec<(String, (String, (String, String)))> = Vec::new();
+    let mut result: HashMap<String, Vec<(String, (String, String))>> = HashMap::new();
 
     match (file).read_to_string(buf){
         Ok(_) => {
             let strings = buf.split("\n");
-            let mut temp_hashmap: HashMap<String, String> = HashMap::new();
+            result.insert("net".to_string(), Vec::new());
+            result.insert("host".to_string(), Vec::new());
 
             for string in strings {
+                let mut temp_hashmap: HashMap<String, String> = HashMap::new();
                 // level[:1:]net[:2:]hash[:1:]252fe[:2:]name[:1:]beb[:2:]description[:1:]ra[:2:]other_parameters...
                 let high_level_parsed_rule: Vec<&str> = string.split("[:2:]").collect();
 
@@ -26,14 +28,17 @@ fn get_rules_vec(rules_file: &String) -> Vec<(String, (String, (String, String))
                     let param_pair: Vec<&str> = parameter.split("[:1:]").collect();
                     temp_hashmap.insert(param_pair[0].to_string(), param_pair[1].to_string());
                 }
-            }
 
-            let level = temp_hashmap["level"].to_string();
-            let hash = temp_hashmap["hash"].to_string();
-            
-            for param in temp_hashmap {
-                if param.0 == "level" || param.0 == "hash" { continue; }
-                result.push((level.to_string(), (hash.to_string(), (param.0, param.1))));
+                let level = temp_hashmap["level"].to_string();
+                let hash = temp_hashmap["hash"].to_string();
+                
+                
+                for param in temp_hashmap {
+                    if param.0 == "level" || param.0 == "hash" { continue; }
+                    if let Some(vector) = result.get_mut(&level.to_string()) {
+                        vector.push((hash.to_string(), (param.0, param.1)));
+                    }
+                }
             }
         },
         Err(e) => println!("Error occured while reading from audit file: {}", e)
