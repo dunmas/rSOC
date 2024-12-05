@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::{Read, Seek, Write};
 
-fn get_rules_vec(rules_file: &String) -> HashMap<String, Vec<(String, (String, String))>> {
+fn get_rules_map(rules_file: &String) -> HashMap<String, Vec<HashMap<String, Vec<(String, String)>>>> {
     let mut file = OpenOptions::new()
                         .append(true)
                         .create(true)
@@ -11,7 +11,7 @@ fn get_rules_vec(rules_file: &String) -> HashMap<String, Vec<(String, (String, S
                         .open(&rules_file)
                         .unwrap();
     let buf: &mut String = &mut "".to_owned();
-    let mut result: HashMap<String, Vec<(String, (String, String))>> = HashMap::new();
+    let mut result: HashMap<String, Vec<HashMap<String, Vec<(String, String)>>>> = HashMap::new();
 
     match (file).read_to_string(buf){
         Ok(_) => {
@@ -31,13 +31,16 @@ fn get_rules_vec(rules_file: &String) -> HashMap<String, Vec<(String, (String, S
 
                 let level = temp_hashmap["level"].to_string();
                 let hash = temp_hashmap["hash"].to_string();
-                
-                
+                let mut temp_vec: Vec<(String, String)> = Vec::new();
+
                 for param in temp_hashmap {
                     if param.0 == "level" || param.0 == "hash" { continue; }
-                    if let Some(vector) = result.get_mut(&level.to_string()) {
-                        vector.push((hash.to_string(), (param.0, param.1)));
-                    }
+                    temp_vec.push((param.0, param.1));
+                }
+
+                if let Some(result_empty_rules_vector) = result.get_mut(&level.to_string()) {
+                    let m: HashMap<String, Vec<(String, String)>> = vec![(hash, temp_vec)].into_iter().collect();
+                    result_empty_rules_vector.push(m);
                 }
             }
         },
@@ -48,15 +51,22 @@ fn get_rules_vec(rules_file: &String) -> HashMap<String, Vec<(String, (String, S
 }
 
 pub fn get_rules_list(rule_type: &str, rules_file: &String) {
-    // let rules_map_by_level = get_rules_map(rules_file)[rule_type];
+    if let Some(rules_vec_by_level) =  get_rules_map(rules_file).get(rule_type) {
+        for level_rule in rules_vec_by_level {
+            let rule_hash_vec: Vec<String> = level_rule.clone().into_keys().collect();
+            let rule_hash: &String = rule_hash_vec.first().unwrap();
+            println!("------------------------------------------------------------------------------------------\n\
+                      Rule level: {}\n\
+                      Rule hash: {}\n", rule_type, rule_hash);
 
-
-    // for level_rule in rules_map_by_level {
-
-    // }
+            for param in level_rule.get(rule_hash).unwrap() {
+                println!("{}: {}", param.0, param.1);
+            }
+        }
+    }
 }
 
-pub fn add_rule(rule_level: &str, rule_name: &str, rule_description: &str, rule_fields: &HashMap<&str, &str>, rules_file: &str) {
+pub fn add_rule(rule_level: &str, rule_name: &str, rule_payload: &str, rule_fields: &HashMap<&str, &str>, rules_file: &str) {
 
 }
 
