@@ -172,7 +172,7 @@ fn rule_menu(rule_file: &String) {
                 let rule_level = get_user_choice();
 
                 match rule_level.as_str() {
-                    "net" => { get_rules_list("net", rule_file); },
+                    "net" => { get_rules_list("network", rule_file); },
                     "host" => { get_rules_list("host", rule_file); },
                     _ => { println!("Undefined rule level. Try 'net' or 'host'") },
                 }
@@ -184,7 +184,6 @@ fn rule_menu(rule_file: &String) {
                 // add_rule(_rule_map.0["rule_level"],
                 //           _rule_map.0["rule_name"], 
                 //           _rule_map.0["rule_description"],
-                //           _rule_map.0["add_rule_level"],
                 //           &_rule_map.1,
                 //           rule_file);
                 pause!();
