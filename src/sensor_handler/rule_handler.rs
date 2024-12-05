@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::{Read, Seek, Write};
 
-pub fn get_rules_map(rules_file: &String) -> HashMap<String, (String, (String, String))> {
+fn get_rules_vec(rules_file: &String) -> Vec<(String, (String, (String, String)))> {
     let mut file = OpenOptions::new()
                         .append(true)
                         .create(true)
@@ -11,7 +11,7 @@ pub fn get_rules_map(rules_file: &String) -> HashMap<String, (String, (String, S
                         .open(&rules_file)
                         .unwrap();
     let buf: &mut String = &mut "".to_owned();
-    let mut result: HashMap<String, (String, (String, String))> = HashMap::new();
+    let mut result: Vec<(String, (String, (String, String)))> = Vec::new();
 
     match (file).read_to_string(buf){
         Ok(_) => {
@@ -33,7 +33,7 @@ pub fn get_rules_map(rules_file: &String) -> HashMap<String, (String, (String, S
             
             for param in temp_hashmap {
                 if param.0 == "level" || param.0 == "hash" { continue; }
-                result.insert(level.to_string(), (hash.to_string(), (param.0, param.1)));
+                result.push((level.to_string(), (hash.to_string(), (param.0, param.1))));
             }
         },
         Err(e) => println!("Error occured while reading from audit file: {}", e)
@@ -43,7 +43,12 @@ pub fn get_rules_map(rules_file: &String) -> HashMap<String, (String, (String, S
 }
 
 pub fn get_rules_list(rule_type: &str, rules_file: &String) {
-    
+    // let rules_map_by_level = get_rules_map(rules_file)[rule_type];
+
+
+    // for level_rule in rules_map_by_level {
+
+    // }
 }
 
 pub fn add_rule(rule_level: &str, rule_name: &str, rule_description: &str, rule_fields: &HashMap<&str, &str>, rules_file: &str) {
