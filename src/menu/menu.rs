@@ -166,7 +166,6 @@ fn rule_menu(rule_file: &String) {
         let choise = get_user_choice();
 
         match choise.as_str() {
-            //get rules
             "1" => {
                 println!("What type of rules you want to get? (net/host)");
                 let rule_level = get_user_choice();
@@ -178,7 +177,6 @@ fn rule_menu(rule_file: &String) {
                 }
                 pause!();
             }
-            // add rule
             "2" => {
                 let _rule_map = add_rule_interface();
                 if !_rule_map.1 { break; }
@@ -187,17 +185,15 @@ fn rule_menu(rule_file: &String) {
                 let desc = _rule_map.0.0.get("description").unwrap().to_string();
                 
                 add_rule(level,
-                    name, 
-                    desc,
-                          &_rule_map.0.1,
-                          rule_file);
+                        name, 
+                     desc,
+                      &_rule_map.0.1,
+                       rule_file);
                 pause!();
             }
-            // delete rule
             "3" => {
                 println!("What type of rule you want to delete? (net/host)");
                 let rule_level = get_user_choice();
-
                 if rule_level != "net" && rule_level != "host" {
                     println!("Undefined rule level. Try 'net' or 'host'");
                     continue;
@@ -235,17 +231,13 @@ fn add_rule_interface() -> ((HashMap<String, String>, HashMap<String, String>), 
     }
 
     println!("Enter rule name: ");
-    // let _ = basic_fields.get_mut("name").insert(&mut get_user_choice());
     basic_fields.insert("name".to_string(), get_user_choice());
 
     println!("Enter rule description: ");
-    // let _ = basic_fields.get_mut("description").insert(&mut get_user_choice());
     basic_fields.insert("description".to_string(), get_user_choice());
 
     println!("Enter rule payload: ");
-    // let _ = basic_fields.get_mut("payload").insert(&mut get_user_choice());
     basic_fields.insert("payload".to_string(), get_user_choice());
-    // io::stdout().flush().unwrap();
 
     let mut count: u32 = 0;
     let mut cycle_flag = false;
@@ -254,7 +246,7 @@ fn add_rule_interface() -> ((HashMap<String, String>, HashMap<String, String>), 
         println!("Enter count of optional fields: ");
         match get_user_choice().parse::<u32>() {
             Ok(number) => { count = number; cycle_flag = true; },
-            Err(e) => { println!("Error parsing number. Try again"); }
+            Err(_e) => { println!("Error parsing number. Try again"); }
         }
     }
 
