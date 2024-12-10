@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use std::io::{self, Write};
 use std::collections::HashMap;
 
@@ -172,7 +173,7 @@ fn rule_menu(rule_file: &String) {
                 let rule_level = get_user_choice();
 
                 match rule_level.as_str() {
-                    "net" => { get_rules_list("network", rule_file); },
+                    "net" => { get_rules_list("net", rule_file); },
                     "host" => { get_rules_list("host", rule_file); },
                     _ => { println!("Undefined rule level. Try 'net' or 'host'") },
                 }
@@ -180,12 +181,17 @@ fn rule_menu(rule_file: &String) {
             }
             // add rule
             "2" => {
-                let _rule_map = add_rule_interface(&rule_file);
-                // add_rule(_rule_map.0["rule_level"],
-                //           _rule_map.0["rule_name"], 
-                //           _rule_map.0["rule_description"],
-                //           &_rule_map.1,
-                //           rule_file);
+                let _rule_map = add_rule_interface();
+                if !_rule_map.1 { break; }
+                let level = _rule_map.0.0.get("level").unwrap().to_string();
+                let name = _rule_map.0.0.get("name").unwrap().to_string();
+                let desc = _rule_map.0.0.get("description").unwrap().to_string();
+                
+                add_rule(level,
+                    name, 
+                    desc,
+                          &_rule_map.0.1,
+                          rule_file);
                 pause!();
             }
             // delete rule
@@ -209,9 +215,59 @@ fn rule_menu(rule_file: &String) {
     }
 }
 
-fn add_rule_interface(rules_file: &String) -> (HashMap<&str, &str>, HashMap<&str, &str>) {
-    let basic_fields: HashMap<&str, &str> = HashMap::new();
-    let optional_fields_map: HashMap<&str, &str> = HashMap::new();
+fn add_rule_interface() -> ((HashMap<String, String>, HashMap<String, String>), bool) {
+    let mut basic_fields: HashMap<String, String> = vec![
+        ("level".to_string(), "".to_string()),
+        ("name".to_string(), "".to_string()),
+        ("payload".to_string(), "".to_string()),
+        ("description".to_string(), "".to_string()),
+    ].into_iter().collect();
+    let mut optional_fields_map: HashMap<String, String> = HashMap::new();
 
-    (basic_fields, optional_fields_map)
+    println!("Enter rule level (net/host): ");
+    match get_user_choice().as_str() {
+        "net" => {
+            basic_fields.insert("level".to_string(), "net".to_string());
+            println!("Enter rule protocol: ");
+            optional_fields_map.insert("protocol".to_string(), get_user_choice());
+        },
+        "host" => { basic_fields.insert("level".to_string(), "host".to_string()); },
+        _ => { println!("Wrong rule level. Try again."); return ((HashMap::new(), HashMap::new()), false); }
+    }
+
+    println!("Enter rule name: ");
+    // let _ = basic_fields.get_mut("name").insert(&mut get_user_choice());
+    basic_fields.insert("name".to_string(), get_user_choice());
+
+    println!("Enter rule description: ");
+    // let _ = basic_fields.get_mut("description").insert(&mut get_user_choice());
+    basic_fields.insert("description".to_string(), get_user_choice());
+
+    println!("Enter rule payload: ");
+    // let _ = basic_fields.get_mut("payload").insert(&mut get_user_choice());
+    basic_fields.insert("payload".to_string(), get_user_choice());
+    // io::stdout().flush().unwrap();
+
+    let mut count: u32 = 0;
+    let mut cycle_flag = false;
+
+    while !cycle_flag {
+        println!("Enter count of optional fields: ");
+        match get_user_choice().parse::<u32>() {
+            Ok(number) => { count = number; cycle_flag = true; },
+            Err(e) => { println!("Error parsing number. Try again"); }
+        }
+    }
+
+    if count > 0 {
+        for i in 0..count {
+            println!("{}. Enter field name: ", i+1);
+            let fname = get_user_choice();
+            println!("{}. Enter field value: ", i+1);
+            let fvalue = get_user_choice();
+            optional_fields_map.insert(fname.to_string(), fvalue.to_string());
+        }
+    }
+
+    ((basic_fields, optional_fields_map), true)
 }
