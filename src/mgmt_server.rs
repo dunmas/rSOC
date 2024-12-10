@@ -4,17 +4,24 @@ mod structs;
 mod sensor_handler;
 mod auth;
 
+// Network Communication
+use std::io::{self, Read, Write};
+use std::net::{TcpListener, TcpStream};
+use std::thread;
+
 use clap::{Arg, Command};
 use menu::menu::main_menu;
 use std::collections::HashMap;
 use structs::soc_structs::{SessionStatus, LogFiles};
 use auth::auth::authentificate;
+use sensor_handler::sensor_handler::handle_client;
 
 const USER_LIST_FILE: &str = "users.txt";
 const AUDIT_LOG: &str = "audit.txt";
 const EVENT_LOG: &str = "events.txt";
 const RULES_FILE: &str = "rules.txt";
 const HOSTNAME: &str = "MAMA-1 | Control centre";
+const LPORT: &str = "7777";
 
 fn main() {
     let matches = Command::new("rSOC")
@@ -41,11 +48,8 @@ fn main() {
     // let auth_res = authentificate(&input_username, &input_password, &USER_LIST_FILE.to_string());
     // if auth_res.0 { username = auth_res.1; } else { return; }
     
-    // test block
-    let mut sensors: HashMap<String, (String, String)> = HashMap::new();
-    sensors.insert("bobr".to_string(), ("host".to_string(), "192.168.17.5".to_string()));
-    sensors.insert("GALYA".to_string(), ("host".to_string(), "172.16.5.1".to_string()));
-    
+    let mut sensors: HashMap<String, (String, String, bool)> = HashMap::new();
+    let listener;
     let current_session: &mut SessionStatus = &mut SessionStatus {
         host: HOSTNAME.to_string(),
         user: username,
@@ -53,7 +57,29 @@ fn main() {
         sensor_list: sensors
     };
 
-    main_menu(current_session, &LogFiles {audit_file: AUDIT_LOG.to_string(),
-                                                                event_file: EVENT_LOG.to_string(),
-                                                                rules_file: RULES_FILE.to_string()});
+    match TcpListener::bind("127.0.0.1".to_string() + LPORT) {
+        Ok(bind_res) => { listener = bind_res; },
+        Err(_) => { println!("Failed to bind to {} port. Try again.", LPORT); return; }
+    }
+    
+    println!("Start listening on {} port", LPORT);
+
+    // thread::spawn();
+
+    for data_stream in listener.incoming() {
+        match data_stream {
+            Ok(stream) => {
+                thread::spawn(|| {
+                    if let Err(e) = handle_client(stream) {
+                        println!("Error while processing connection:\n{}", e)
+                    }
+                });
+            },
+            Err(e) => { println!("Error while recieving connection:\n{}", e) }
+        }
+    }
+
+    // main_menu(current_session, &LogFiles {audit_file: AUDIT_LOG.to_string(),
+    //                                                             event_file: EVENT_LOG.to_string(),
+    //                                                             rules_file: RULES_FILE.to_string()});
 }

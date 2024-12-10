@@ -5,7 +5,7 @@ pub struct SessionStatus {
     pub host: String,
     pub user: String,
     pub audit_status: bool,
-    pub sensor_list: HashMap<String, (String, String)>,
+    pub sensor_list: HashMap<String, (String, String, bool)>,
 }
 
 pub struct LogFiles {
@@ -26,12 +26,6 @@ pub enum AuditEventType {
     HostSenDisconn
 }
 
-#[derive(Debug)]
-pub enum SecurityEventType {
-    Warning,
-    Critical
-}
-
 pub mod multithread{
     use std::sync::{Arc, Mutex};
 
@@ -46,12 +40,6 @@ pub mod host_level_rules {
 }
 
 impl fmt::Display for AuditEventType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl fmt::Display for SecurityEventType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
     }
