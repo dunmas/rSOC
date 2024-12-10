@@ -206,7 +206,7 @@ fn rule_menu(rule_file: &String) {
 
                 println!("Enter rule hash (from rules list):");
                 let rule_hash = get_user_choice();
-                // delete_rule(&rule_level, &rule_hash, rule_file);
+                delete_rule(&rule_level, &rule_hash, rule_file);
                 pause!();
             }
             "4" => break,

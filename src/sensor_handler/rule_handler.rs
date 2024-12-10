@@ -1,13 +1,12 @@
 use std::collections::HashMap;
-use std::fs::OpenOptions;
+use std::fs::{self, OpenOptions};
 use std::io::{Read, Seek, Write};
 use std::hash::Hash;
+use clap::builder::Str;
+use regex::Regex;
 use sha2::{Sha256, Digest};
 
 pub fn get_rules_list(rule_type: &str, rules_file: &String) {
-    let map = get_rules_map(rules_file);
-    let level_rules_vec = map.get(rule_type).unwrap();
-
     if let Some(rules_vec_by_level) =  get_rules_map(rules_file).get(rule_type) {
         for level_rule in rules_vec_by_level {
             let rule_hash_vec: Vec<String> = level_rule.clone().into_keys().collect();
@@ -71,7 +70,35 @@ pub fn add_rule(rule_level: String, rule_name: String, rule_payload: String, rul
 }
 
 pub fn delete_rule(rule_level: &String, rule_hash: &String, rules_file: &String) {
-    // let map = get_rules_map(rule_level);
+    let pattern_str = format!(r"level\[:1:\]{}\[:2:\]hash\[:1:\]{}\[:2:\]", rule_level, rule_hash);
+    let pattern = Regex::new(&pattern_str).unwrap();
+    let mut lines: Vec<String> = Vec::new();
+
+    match fs::read_to_string(rules_file) {
+        Ok(file) => {
+            lines = file.lines()
+            .filter(|line| !pattern.is_match(line))
+            .map(String::from)
+            .collect();
+        },
+        Err(_e) => { println!("Error while parcing rules file."); return; }
+    }
+
+    let mut n_file = OpenOptions::new()
+                        .write(true)
+                        .create(true)
+                        .truncate(true)
+                        .open(&rules_file)
+                        .unwrap();
+    
+    for line in lines {
+        let _ = match writeln!(n_file, "{}", line) {
+            Ok(_) => {},
+            Err(_e) => {  println!("Error while writing file back."); }
+        };
+    }    
+
+    println!("Rule deleted successfully.");
 }
 
 fn get_rules_map(rules_file: &String) -> HashMap<String, Vec<HashMap<String, Vec<(String, String)>>>> {
