@@ -1,8 +1,6 @@
 use std::collections::HashMap;
 use std::fs::{self, OpenOptions};
-use std::io::{Read, Seek, Write};
-use std::hash::Hash;
-use clap::builder::Str;
+use std::io::{Read, Write};
 use regex::Regex;
 use sha2::{Sha256, Digest};
 
@@ -35,20 +33,6 @@ pub fn add_rule(rule_level: String, rule_name: String, rule_payload: String, rul
     hasher.update(hashing_str);
     let raw_hash = hasher.finalize();
     let hash = format!("{:.5}", format!("{:x}", raw_hash));
-
-    // let _level = "level".to_string();
-    // let _hash = "hash".to_string();
-    // let _name = "name".to_string();
-    // let _payload = "payload".to_string();
-
-    // let mut param_pairs: HashMap<&String, &String> = vec![
-    //     (&_level, &rule_level),
-    //     (&_hash, &hash),
-    //     (&_name, &rule_name),
-    //     (&_payload, &rule_payload)
-    // ].into_iter().collect();
-
-    // param_pairs.extend(rule_fields);
     let mut param_vec: Vec<String> = Vec::new();
 
     param_vec.push("level".to_string() + "[:1:]" + &rule_level);
@@ -72,14 +56,21 @@ pub fn add_rule(rule_level: String, rule_name: String, rule_payload: String, rul
 pub fn delete_rule(rule_level: &String, rule_hash: &String, rules_file: &String) {
     let pattern_str = format!(r"level\[:1:\]{}\[:2:\]hash\[:1:\]{}\[:2:\]", rule_level, rule_hash);
     let pattern = Regex::new(&pattern_str).unwrap();
-    let mut lines: Vec<String> = Vec::new();
+    let lines: Vec<String>;
 
     match fs::read_to_string(rules_file) {
         Ok(file) => {
-            lines = file.lines()
-            .filter(|line| !pattern.is_match(line))
-            .map(String::from)
-            .collect();
+
+            if let Some(_) = pattern.find(&file) {
+                lines = file.lines()
+                .filter(|line| !pattern.is_match(line))
+                .map(String::from)
+                .collect();
+            }
+            else {
+                println!("There is no rule with these level and hash parameters.");
+                return;
+            }
         },
         Err(_e) => { println!("Error while parcing rules file."); return; }
     }
