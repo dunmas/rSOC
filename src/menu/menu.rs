@@ -1,5 +1,8 @@
 use std::io::{self, Write};
 use std::collections::HashMap;
+use std::sync::mpsc;
+
+use futures::channel::mpsc::{Receiver, Sender};
 
 use crate::file_manager::file_manager::audit_handler::{change_audit_status, prepare_file_mutexes, get_10_latest_audit_messages};
 use crate::structs::soc_structs::multithread::FileMutexes;
@@ -63,7 +66,7 @@ macro_rules! pause {
     }};
 }
 
-pub fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles) {
+pub fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles, tx: std::sync::mpsc::Sender<&str>) {
     let file_mutexes: FileMutexes = prepare_file_mutexes(log_files);
     // add rules file checker
 
@@ -78,7 +81,8 @@ pub fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles) {
             "4" => rule_menu(&log_files.rules_file),
             "5" => {
                 println!("Goodbye.");
-                break;
+                tx.send("stop").unwrap();
+                return;
             }
             _ => println!("Undefined option. Try again.\n"),
         }
