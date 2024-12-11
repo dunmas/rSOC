@@ -66,7 +66,7 @@ macro_rules! pause {
     }};
 }
 
-pub async fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles, tx: tokio::sync::mpsc::Sender<&str>) {
+pub async fn main_menu<'a>(session_status: &mut SessionStatus<'a>, log_files: &LogFiles, tx: tokio::sync::mpsc::Sender<&str>) {
     let file_mutexes: FileMutexes = prepare_file_mutexes(log_files);
     // add rules file checker
 

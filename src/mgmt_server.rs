@@ -12,6 +12,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::spawn;
 
 use clap::{Arg, Command};
+use std::sync::{Arc, Mutex};
 use futures::channel;
 use menu::menu::main_menu;
 use std::collections::HashMap;
@@ -52,7 +53,10 @@ async fn main() {
     // let auth_res = authentificate(&input_username, &input_password, &USER_LIST_FILE.to_string());
     // if auth_res.0 { username = auth_res.1; } else { return; }
     
-    let mut sensors: HashMap<String, (String, String, bool)> = HashMap::new();
+    let mut sensors: HashMap<String, (mpsc::Sender<&str>, String, String, bool)> = HashMap::new();
+    let sensors_mutex =  Arc::new(Mutex::new(sensors));
+    let sensors_mutex_clone = Arc::clone(&sensors_mutex);
+
     let listener;
 
     match TcpListener::bind("127.0.0.1:".to_string() + LPORT).await {
@@ -63,7 +67,6 @@ async fn main() {
     println!("Start listening on {} port", LPORT);
     
     let (tx, mut rx) = mpsc::channel::<&str>(32);
-
     {
         let tx_clone = tx.clone();
         spawn(async move {
@@ -71,7 +74,7 @@ async fn main() {
                     host: HOSTNAME.to_string(),
                     user: username,
                     audit_status: true,
-                    sensor_list: sensors
+                    sensor_list: sensors_mutex
                 };
             
                 main_menu(current_session, &LogFiles {audit_file: AUDIT_LOG.to_string(),
@@ -84,13 +87,17 @@ async fn main() {
     loop {
         tokio::select! {
             result = listener.accept() => match result {
-                Ok((stream, _)) => {
-                    let tx_clone = tx.clone();
+                Ok((stream, addr)) => {
+                    let addr_str = format!("{}", addr);
+                    let (client_tx, mut client_rx) = mpsc::channel::<&str>(32);
+                    let main_tx = tx.clone();
+                    sensors_mutex_clone.lock().unwrap().insert(addr_str.clone(), (client_tx, "name".to_string(), "user".to_string(), true));
+                    
                     spawn(async move {
-                        if let Err(e) = handle_client(stream).await {
+                        if let Err(e) = handle_client(stream, addr_str, client_rx).await {
                             println!("Error while client processing:\n{}", e);
                         }
-                        tx_clone.send("client_disc").await.unwrap();
+                        main_tx.send("client_disc").await.unwrap();
                     });
                 },
                 Err(e) => println!("Error while recieving connection:\n{}", e),
@@ -100,6 +107,12 @@ async fn main() {
                     println!("Stop listening...");
                     break;
                 },
+                Some("client_disc") => {
+                    // parcing ip
+                    let addr = "".to_string();
+                    sensors_mutex_clone.lock().unwrap().remove(&addr);
+                    println!("Client disconnected: {}", addr);
+                }
                 _ => {}
             }
         }

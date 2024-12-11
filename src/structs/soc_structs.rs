@@ -1,11 +1,13 @@
 use std::fmt;
 use std::collections::HashMap;
+use tokio::sync::mpsc;
+use std::sync::{Arc, Mutex};
 
-pub struct SessionStatus {
+pub struct SessionStatus<'a> {
     pub host: String,
     pub user: String,
     pub audit_status: bool,
-    pub sensor_list: HashMap<String, (String, String, bool)>,
+    pub sensor_list: Arc<Mutex<HashMap<String, (mpsc::Sender<&'a str>, String, String, bool)>>>,
 }
 
 pub struct LogFiles {
