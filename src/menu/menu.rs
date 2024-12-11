@@ -66,7 +66,7 @@ macro_rules! pause {
     }};
 }
 
-pub fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles, tx: std::sync::mpsc::Sender<&str>) {
+pub async fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles, tx: tokio::sync::mpsc::Sender<&str>) {
     let file_mutexes: FileMutexes = prepare_file_mutexes(log_files);
     // add rules file checker
 
@@ -81,7 +81,7 @@ pub fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles, tx: s
             "4" => rule_menu(&log_files.rules_file),
             "5" => {
                 println!("Goodbye.");
-                tx.send("stop").unwrap();
+                tx.send("stop").await.unwrap();
                 return;
             }
             _ => println!("Undefined option. Try again.\n"),

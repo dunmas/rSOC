@@ -6,10 +6,10 @@ mod auth;
 
 // Network Communication
 use std::io::{self, Read, Write};
-use std::net::{TcpListener, TcpStream};
 use std::thread;
-use std::sync::mpsc;
-use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc;
+use tokio::net::{TcpListener, TcpStream};
+use tokio::spawn;
 
 use clap::{Arg, Command};
 use futures::channel;
@@ -26,7 +26,8 @@ const RULES_FILE: &str = "rules.txt";
 const HOSTNAME: &str = "MAMA-1 | Control centre";
 const LPORT: &str = "7777";
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let matches = Command::new("rSOC")
         .version("0.0.1")
         .author("buran <bvran@proton.me>")
@@ -54,46 +55,53 @@ fn main() {
     let mut sensors: HashMap<String, (String, String, bool)> = HashMap::new();
     let listener;
 
-    match TcpListener::bind("127.0.0.1:".to_string() + LPORT) {
+    match TcpListener::bind("127.0.0.1:".to_string() + LPORT).await {
         Ok(bind_res) => { listener = bind_res; },
         Err(e) => { println!("Failed to bind to {} port. Try again.\n{}", LPORT, e); return; }
     }
     
     println!("Start listening on {} port", LPORT);
     
-    let (tx, rx) = mpsc::channel::<&str>();
+    let (tx, mut rx) = mpsc::channel::<&str>(32);
 
-    thread::spawn(move || {
-        let current_session: &mut SessionStatus = &mut SessionStatus {
-            host: HOSTNAME.to_string(),
-            user: username,
-            audit_status: true,
-            sensor_list: sensors
-        };
+    {
+        let tx_clone = tx.clone();
+        spawn(async move {
+            let current_session: &mut SessionStatus = &mut SessionStatus {
+                    host: HOSTNAME.to_string(),
+                    user: username,
+                    audit_status: true,
+                    sensor_list: sensors
+                };
+            
+                main_menu(current_session, &LogFiles {audit_file: AUDIT_LOG.to_string(),
+                                                                event_file: EVENT_LOG.to_string(),
+                                                                rules_file: RULES_FILE.to_string()},
+                                                                tx_clone).await;
+        });
+    }
 
-        main_menu(current_session, &LogFiles {audit_file: AUDIT_LOG.to_string(),
-                                                            event_file: EVENT_LOG.to_string(),
-                                                            rules_file: RULES_FILE.to_string()},
-                                                            tx.clone());
-    });
-
-    // for data_stream in listener.incoming() {
-    //     match data_stream {
-    //         Ok(stream) => {
-    //             thread::spawn(|| {
-    //                 if let Err(e) = handle_client(stream) {
-    //                     println!("Error while processing connection:\n{}", e)
-    //                 }
-    //             });
-    //         },
-    //         Err(e) => { println!("Error while recieving connection:\n{}", e) }
-    //     }
-    // }
-
-    for received in rx {
-        if received == "stop" {
-            println!("Stop listening...");
-            break;
+    loop {
+        tokio::select! {
+            result = listener.accept() => match result {
+                Ok((stream, _)) => {
+                    let tx_clone = tx.clone();
+                    spawn(async move {
+                        if let Err(e) = handle_client(stream).await {
+                            println!("Error while client processing:\n{}", e);
+                        }
+                        tx_clone.send("client_disc").await.unwrap();
+                    });
+                },
+                Err(e) => println!("Error while recieving connection:\n{}", e),
+            },
+            command = rx.recv() => match command {
+                Some("stop") => {
+                    println!("Stop listening...");
+                    break;
+                },
+                _ => {}
+            }
         }
     }
 }
