@@ -55,7 +55,8 @@ async fn main() {
     
     let sensors: HashMap<String, (mpsc::Sender<&str>, String, String, bool)> = HashMap::new();
     let sensors_mutex =  Arc::new(Mutex::new(sensors));
-    let sensors_mutex_clone = Arc::clone(&sensors_mutex);
+
+    let sensors_mutex_clone_for_rx = Arc::clone(&sensors_mutex);
 
     let listener;
 
@@ -65,7 +66,7 @@ async fn main() {
     }
     
     println!("Start listening on {} port", LPORT);
-    let (tx, mut rx) = mpsc::channel::<&str>(32);
+    let (tx, mut rx) = mpsc::channel::<String>(32);
 
     // console interface
     {
@@ -94,31 +95,28 @@ async fn main() {
                     let addr_str = format!("{}", addr);
                     let (client_tx, client_rx) = mpsc::channel::<&str>(32);
                     let main_tx = tx.clone();
-
-                    // locking just for an addition
-                    {
-                        sensors_mutex_clone.lock().unwrap().insert(addr_str.clone(), (client_tx, "name".to_string(), "host".to_string(), true));
-                    }
+                    let sensors_mutex_clone_for_clients = Arc::clone(&sensors_mutex_clone_for_rx);
+                    let server_tx_clone = tx.clone();
                     
                     spawn(async move {
-                        if let Err(e) = handle_client(stream, addr_str, client_rx, &RULES_FILE.to_string()).await {
+                        if let Err(e) = handle_client(stream, addr_str, client_rx, &RULES_FILE.to_string(), Arc::clone(&sensors_mutex_clone_for_clients), client_tx, server_tx_clone).await {
                             println!("Error while client processing:\n{}", e);
                         }
-                        main_tx.send("client_disc").await.unwrap();
+                        main_tx.send("client_disc".to_string()).await.unwrap();
                     });
                 },
                 Err(e) => println!("Error while recieving connection:\n{}", e),
             },
             command = rx.recv() => match command {
-                Some("stop") => {
+                Some(ref cmd) if cmd == "stop" => {
                     println!("Stop listening...");
                     break;
                 },
-                Some("client_disc") => {
-                    // parcing ip ("client_disc[:ip:]127.0.0.1")
-                    let addr = "".to_string();
-                    sensors_mutex_clone.lock().unwrap().remove(&addr);
-                    println!("Client disconnected: {}", addr);
+                Some(ref cmd) if cmd.starts_with("cl_disc") => {
+                    // parced_cmd[1] - address of client
+                    let parced_cmd: Vec<&str> = cmd.split("[:1:]").collect();
+                    sensors_mutex_clone_for_rx.lock().unwrap().remove(parced_cmd[1]);
+                    println!("Client disconnected: {}", parced_cmd[1].to_string());
                 }
                 _ => {}
             }

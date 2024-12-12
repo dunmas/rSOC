@@ -7,6 +7,8 @@ use tokio::sync::mpsc;
 use crate::structs::soc_structs::{SessionStatus, AuditEventType};
 use crate::structs::soc_structs::multithread::FileMutexes;
 use crate::file_manager::file_manager::audit_handler::write_audit_event;
+use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
 
 pub fn get_sensor_list(session_status: &mut SessionStatus) {
     let sensors_map = session_status.sensor_list.lock().unwrap();
@@ -59,7 +61,7 @@ fn get_rules_string_by_level(level: String, rule_file: &String) -> String {
     tx_string
 }
 
-pub async fn handle_client(mut stream: TcpStream, addr_str: String, mut client_rx: mpsc::Receiver<&str>, rule_file: &String) -> io::Result<()> {
+pub async fn handle_client<'a>(mut stream: TcpStream, addr_str: String, mut client_rx: mpsc::Receiver<&str>, rule_file: &String, sensors_mutex_clone: Arc<Mutex<HashMap<String, (mpsc::Sender<&'a str>, String, String, bool)>>>, client_tx: mpsc::Sender<&'a str>, server_tx: mpsc::Sender<String>) -> io::Result<()> {
     let mut init_buffer = [0; 1024];
 
     // Init string from client
@@ -71,13 +73,17 @@ pub async fn handle_client(mut stream: TcpStream, addr_str: String, mut client_r
     let raw_init_string = String::from_utf8_lossy(&init_buffer[..n]);
     // init_vec[0] - sensor_name, 1 - sensor_level, 2 - sensor user
     let init_vec: Vec<&str> = raw_init_string.split("[:1:]").collect();
-
+    sensors_mutex_clone.lock().unwrap().insert(addr_str.clone(), (client_tx, init_vec[0].to_string(), init_vec[1].to_string(), true));
+    
     let mut buffer = [0; 1024];
     loop {
         tokio::select! {
             // data stream from sensor
             result = stream.read(&mut buffer) => match result {
-                Ok(n) if n == 0 => break,
+                Ok(n) if n == 0 => {
+                    server_tx.send("cl_disc[:1:]".to_string() + &addr_str).await.unwrap();
+                    break;
+                },
                 Ok(n) => {
                     // getting some data from client to server
                     let raw_string = String::from_utf8_lossy(&buffer[..n]);
