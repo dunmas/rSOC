@@ -9,6 +9,7 @@ use crate::structs::soc_structs::multithread::FileMutexes;
 use crate::structs::soc_structs::{SessionStatus, LogFiles};
 use crate::file_manager::file_manager::event_handler::get_10_latest_event_messages;
 use crate::sensor_handler::rule_handler::{get_rules_list, add_rule, delete_rule};
+use crate::sensor_handler::sensor_handler::{get_sensor_list, change_sensor_state, update_sensor_rules};
 
 const MAIN_MENU: &str = "\
         ------------------------------------------------------\n\
@@ -76,7 +77,7 @@ pub async fn main_menu<'a>(session_status: &mut SessionStatus<'a>, log_files: &L
 
         match choise.as_str() {
             "1" => event_menu(&file_mutexes),
-            "2" => sensors_menu(),
+            "2" => sensors_menu(session_status),
             "3" => audit_menu(session_status, &file_mutexes, &log_files.audit_file),
             "4" => rule_menu(&log_files.rules_file),
             "5" => {
@@ -118,21 +119,24 @@ fn event_menu(file_mutexes: &FileMutexes) {
     }
 }
 
-fn sensors_menu() {
+fn sensors_menu(session_status: &mut SessionStatus) {
     loop {
         println!("{}", SENSORS_MENU);
         let choise = get_user_choice();
 
         match choise.as_str() {
             "1" => {
-                println!("list");
+                get_sensor_list(session_status);
+                println!(" ");
                 pause!();
             }
             "2" => {
+                change_sensor_state();
                 println!("start/stop");
                 pause!();
             }
             "3" => {
+                update_sensor_rules();
                 println!("update rules");
                 pause!();
             }

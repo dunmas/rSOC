@@ -65,8 +65,9 @@ async fn main() {
     }
     
     println!("Start listening on {} port", LPORT);
-    
     let (tx, mut rx) = mpsc::channel::<&str>(32);
+
+    // console interface
     {
         let tx_clone = tx.clone();
         spawn(async move {
@@ -84,6 +85,7 @@ async fn main() {
         });
     }
 
+    // sensors handling
     loop {
         tokio::select! {
             result = listener.accept() => match result {
@@ -108,7 +110,7 @@ async fn main() {
                     break;
                 },
                 Some("client_disc") => {
-                    // parcing ip
+                    // parcing ip ("client_disc[:ip:]127.0.0.1")
                     let addr = "".to_string();
                     sensors_mutex_clone.lock().unwrap().remove(&addr);
                     println!("Client disconnected: {}", addr);
