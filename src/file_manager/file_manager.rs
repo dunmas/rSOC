@@ -61,10 +61,18 @@ pub mod audit_handler {
                                 .read(true)
                                 .open(&log_files.event_file)
                                 .unwrap();
+        
+        let rules_file = OpenOptions::new()
+                                .append(true)
+                                .create(true)
+                                .read(true)
+                                .open(&log_files.rules_file)
+                                .unwrap();
 
         FileMutexes {
             audit_mutex: Arc::new(Mutex::new(audit_file)),
             event_mutex: Arc::new(Mutex::new(event_file)),
+            rules_mutex: Arc::new(Mutex::new(rules_file)),
         }
 
     }

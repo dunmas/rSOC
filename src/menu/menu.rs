@@ -30,7 +30,7 @@ const SENSORS_MENU: &str = "\
             Select option:\n\
             1) List of sensors\n\
             2) Start/stop sensor\n\
-            4) Back\n\
+            3) Back\n\
             ------------------------------------------------------";
 const AUDIT_MENU: &str = "\
             ------------------------------------------------------\n\
@@ -74,7 +74,7 @@ pub async fn main_menu<'a>(session_status: &mut SessionStatus<'a>, log_files: &L
             "1" => event_menu(&file_mutexes),
             "2" => sensors_menu(session_status, &file_mutexes, &log_files.audit_file),
             "3" => audit_menu(session_status, &file_mutexes, &log_files.audit_file),
-            "4" => rule_menu(&log_files.rules_file),
+            "4" => rule_menu(&file_mutexes, &log_files.rules_file),
             "5" => {
                 println!("Goodbye.");
                 tx.send("stop").await.unwrap();
@@ -163,7 +163,7 @@ fn audit_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, lo
     }
 }
 
-fn rule_menu(rule_file: &String) {
+fn rule_menu(file_mutexes: &FileMutexes, rule_file: &String) {
     loop {
         println!("{}", RULE_MENU);
         let choise = get_user_choice();
@@ -174,8 +174,8 @@ fn rule_menu(rule_file: &String) {
                 let rule_level = get_user_choice();
 
                 match rule_level.as_str() {
-                    "net" => { get_rules_list("net", rule_file); },
-                    "host" => { get_rules_list("host", rule_file); },
+                    "net" => { get_rules_list("net", file_mutexes); },
+                    "host" => { get_rules_list("host", file_mutexes); },
                     _ => { println!("Undefined rule level. Try 'net' or 'host'") },
                 }
                 pause!();
@@ -188,10 +188,11 @@ fn rule_menu(rule_file: &String) {
                 let desc = _rule_map.0.0.get("description").unwrap().to_string();
                 
                 add_rule(level,
-                        name, 
-                     desc,
-                      &_rule_map.0.1,
-                       rule_file);
+                         name, 
+                      desc,
+                       &_rule_map.0.1,
+                        rule_file,
+                                   file_mutexes);
                 pause!();
             }
             "3" => {
@@ -204,7 +205,7 @@ fn rule_menu(rule_file: &String) {
 
                 println!("Enter rule hash (from rules list):");
                 let rule_hash = get_user_choice();
-                delete_rule(&rule_level, &rule_hash, rule_file);
+                delete_rule(&rule_level, &rule_hash, rule_file, file_mutexes);
                 pause!();
             }
             "4" => break,

@@ -1,11 +1,15 @@
 use std::collections::HashMap;
-use std::fs::{self, OpenOptions};
+use std::fs::OpenOptions;
 use std::io::{Read, Write};
+use std::mem;
 use regex::Regex;
 use sha2::{Sha256, Digest};
+use std::io::Seek;
 
-pub fn get_rules_list(rule_type: &str, rules_file: &String) {
-    if let Some(rules_vec_by_level) =  get_rules_map(rules_file).get(rule_type) {
+use crate::structs::soc_structs::multithread::FileMutexes;
+
+pub fn get_rules_list(rule_type: &str, file_mutexes: &FileMutexes) {
+    if let Some(rules_vec_by_level) =  get_rules_map(file_mutexes).get(rule_type) {
         for level_rule in rules_vec_by_level {
             let rule_hash_vec: Vec<String> = level_rule.clone().into_keys().collect();
             let rule_hash: &String = rule_hash_vec.first().unwrap();
@@ -20,13 +24,8 @@ pub fn get_rules_list(rule_type: &str, rules_file: &String) {
     }
 }
 
-pub fn add_rule(rule_level: String, rule_name: String, rule_payload: String, rule_fields: &HashMap<String, String>, rules_file: &String) -> bool {
-    let mut rules_file = OpenOptions::new()
-                            .append(true)
-                            .create(true)
-                            .read(true)
-                            .open(rules_file)
-                            .unwrap();
+pub fn add_rule(rule_level: String, rule_name: String, rule_payload: String, rule_fields: &HashMap<String, String>, rules_file: &String, file_mutexes: &FileMutexes) -> bool {
+    let mut locked_rules_file = file_mutexes.rules_mutex.lock().unwrap();
 
     let hashing_str = rule_name.to_string() + rule_payload.as_str();
     let mut hasher = Sha256::new();
@@ -45,24 +44,35 @@ pub fn add_rule(rule_level: String, rule_name: String, rule_payload: String, rul
         param_vec.push(joined_string);
     }
 
-    let result = match writeln!(rules_file, "{}", param_vec.join("[:2:]")) {
+    let result = match writeln!(locked_rules_file, "{}", param_vec.join("[:2:]")) {
         Ok(_) => true,
         Err(_e) => false
     };
 
+    if result {
+        let _ = mem::replace(&mut *locked_rules_file,
+        OpenOptions::new()
+        .append(true)
+        .create(true)
+        .read(true)
+        .open(&rules_file)
+        .unwrap());
+    }
+
     result
 }
 
-pub fn delete_rule(rule_level: &String, rule_hash: &String, rules_file: &String) {
+pub fn delete_rule(rule_level: &String, rule_hash: &String, rules_file: &String, file_mutexes: &FileMutexes) {
     let pattern_str = format!(r"level\[:1:\]{}\[:2:\]hash\[:1:\]{}\[:2:\]", rule_level, rule_hash);
     let pattern = Regex::new(&pattern_str).unwrap();
     let lines: Vec<String>;
+    let mut locked_file = file_mutexes.rules_mutex.lock().unwrap();
+    let buf: &mut String = &mut "".to_owned();
 
-    match fs::read_to_string(rules_file) {
-        Ok(file) => {
-
-            if let Some(_) = pattern.find(&file) {
-                lines = file.lines()
+    match locked_file.read_to_string(buf) {
+        Ok(_) => {
+            if let Some(_) = pattern.find(&buf) {
+                lines = buf.lines()
                 .filter(|line| !pattern.is_match(line))
                 .map(String::from)
                 .collect();
@@ -75,30 +85,36 @@ pub fn delete_rule(rule_level: &String, rule_hash: &String, rules_file: &String)
         Err(_e) => { println!("Error while parcing rules file."); return; }
     }
 
-    let mut n_file = OpenOptions::new()
-                        .write(true)
-                        .create(true)
-                        .truncate(true)
-                        .open(&rules_file)
-                        .unwrap();
+    if lines.len() > 0 {
+        let _ = mem::replace(&mut *locked_file,
+            OpenOptions::new()
+            .truncate(true)
+            .write(true)
+            .read(true)
+            .open(&rules_file)
+            .unwrap());
+    }
     
-    for line in lines {
-        let _ = match writeln!(n_file, "{}", line) {
-            Ok(_) => {},
-            Err(_e) => {  println!("Error while writing file back."); }
-        };
-    }    
+    let result = match writeln!(locked_file, "{}", lines.join("\n")) {
+        Ok(_) => true,
+        Err(_e) => false
+    };
+
+    if result {
+        let _ = mem::replace(&mut *locked_file,
+        OpenOptions::new()
+        .append(true)
+        .create(true)
+        .read(true)
+        .open(&rules_file)
+        .unwrap());
+    }
 
     println!("Rule deleted successfully.");
 }
 
-pub fn get_rules_map(rules_file: &String) -> HashMap<String, Vec<HashMap<String, Vec<(String, String)>>>> {
-    let mut file = OpenOptions::new()
-                        .append(true)
-                        .create(true)
-                        .read(true)
-                        .open(&rules_file)
-                        .unwrap();
+pub fn get_rules_map(file_mutexes: &FileMutexes) -> HashMap<String, Vec<HashMap<String, Vec<(String, String)>>>> {
+    let mut file = file_mutexes.rules_mutex.lock().unwrap();
     let buf: &mut String = &mut "".to_owned();
     let mut result: HashMap<String, Vec<HashMap<String, Vec<(String, String)>>>> = HashMap::new();
 
@@ -135,10 +151,12 @@ pub fn get_rules_map(rules_file: &String) -> HashMap<String, Vec<HashMap<String,
                 }
             }
 
+            let _ = file.rewind();
             return result;
         },
         Err(e) => println!("Error occured while reading from audit file: {}", e)
     }
 
+    let _ = file.rewind();
     result
 }

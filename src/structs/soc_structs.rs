@@ -37,11 +37,8 @@ pub mod multithread{
     pub struct FileMutexes {
         pub audit_mutex: Arc<Mutex<std::fs::File>>,
         pub event_mutex: Arc<Mutex<std::fs::File>>,
+        pub rules_mutex: Arc<Mutex<std::fs::File>>
     }
-}
-
-pub mod host_level_rules {
-
 }
 
 impl fmt::Display for AuditEventType {
