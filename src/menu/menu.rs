@@ -74,10 +74,11 @@ pub async fn main_menu<'a>(session_status: &mut SessionStatus<'a>, log_files: &L
     loop {
         println!("{}", MAIN_MENU);
         let choise = get_user_choice();
+        let tx_copy = tx.clone();
 
         match choise.as_str() {
             "1" => event_menu(&file_mutexes),
-            "2" => sensors_menu(session_status, &file_mutexes, &log_files.audit_file),
+            "2" => sensors_menu(session_status, &file_mutexes, &log_files.audit_file, &log_files.rules_file, tx_copy),
             "3" => audit_menu(session_status, &file_mutexes, &log_files.audit_file),
             "4" => rule_menu(&log_files.rules_file),
             "5" => {
@@ -119,7 +120,7 @@ fn event_menu(file_mutexes: &FileMutexes) {
     }
 }
 
-fn sensors_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String) {
+fn sensors_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String, rules_file: &String, tx: tokio::sync::mpsc::Sender<&str>) {
     loop {
         println!("{}", SENSORS_MENU);
         let choise = get_user_choice();
@@ -131,7 +132,7 @@ fn sensors_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, 
                 pause!();
             }
             "2" => {
-                println!("Enter IP of sensor to change it's status:");
+                println!("Enter address of sensor to change it's status:");
                 let sensor_ip = &get_user_choice();
 
                 let operation_status: (bool, bool, bool) = change_sensor_state(sensor_ip, session_status, file_mutexes, log_file);
@@ -141,8 +142,11 @@ fn sensors_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, 
                 pause!();
             }
             "3" => {
-                update_sensor_rules();
-                println!("update rules");
+                println!("Enter address of sensor to change it's status:");
+                let sensor_ip = &get_user_choice();
+
+                let status = update_sensor_rules(sensor_ip, session_status, file_mutexes, log_file, rules_file, tx.clone());
+                if !status { println!("Error while updateing rules.") }
                 pause!();
             }
             "4" => break,

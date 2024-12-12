@@ -92,7 +92,7 @@ pub fn delete_rule(rule_level: &String, rule_hash: &String, rules_file: &String)
     println!("Rule deleted successfully.");
 }
 
-fn get_rules_map(rules_file: &String) -> HashMap<String, Vec<HashMap<String, Vec<(String, String)>>>> {
+pub fn get_rules_map(rules_file: &String) -> HashMap<String, Vec<HashMap<String, Vec<(String, String)>>>> {
     let mut file = OpenOptions::new()
                         .append(true)
                         .create(true)

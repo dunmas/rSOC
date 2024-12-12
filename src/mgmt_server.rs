@@ -90,13 +90,14 @@ async fn main() {
         tokio::select! {
             result = listener.accept() => match result {
                 Ok((stream, addr)) => {
+                    // check address format: port is required
                     let addr_str = format!("{}", addr);
                     let (client_tx, mut client_rx) = mpsc::channel::<&str>(32);
                     let main_tx = tx.clone();
-                    
+
                     // locking just for an addition
                     {
-                        sensors_mutex_clone.lock().unwrap().insert(addr_str.clone(), (client_tx, "name".to_string(), "user".to_string(), true));
+                        sensors_mutex_clone.lock().unwrap().insert(addr_str.clone(), (client_tx, "name".to_string(), "host".to_string(), true));
                     }
                     
                     spawn(async move {
