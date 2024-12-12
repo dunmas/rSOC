@@ -93,7 +93,11 @@ async fn main() {
                     let addr_str = format!("{}", addr);
                     let (client_tx, mut client_rx) = mpsc::channel::<&str>(32);
                     let main_tx = tx.clone();
-                    sensors_mutex_clone.lock().unwrap().insert(addr_str.clone(), (client_tx, "name".to_string(), "user".to_string(), true));
+                    
+                    // locking just for an addition
+                    {
+                        sensors_mutex_clone.lock().unwrap().insert(addr_str.clone(), (client_tx, "name".to_string(), "user".to_string(), true));
+                    }
                     
                     spawn(async move {
                         if let Err(e) = handle_client(stream, addr_str, client_rx).await {

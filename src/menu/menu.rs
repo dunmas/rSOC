@@ -77,7 +77,7 @@ pub async fn main_menu<'a>(session_status: &mut SessionStatus<'a>, log_files: &L
 
         match choise.as_str() {
             "1" => event_menu(&file_mutexes),
-            "2" => sensors_menu(session_status),
+            "2" => sensors_menu(session_status, &file_mutexes, &log_files.audit_file),
             "3" => audit_menu(session_status, &file_mutexes, &log_files.audit_file),
             "4" => rule_menu(&log_files.rules_file),
             "5" => {
@@ -119,7 +119,7 @@ fn event_menu(file_mutexes: &FileMutexes) {
     }
 }
 
-fn sensors_menu(session_status: &mut SessionStatus) {
+fn sensors_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String) {
     loop {
         println!("{}", SENSORS_MENU);
         let choise = get_user_choice();
@@ -131,8 +131,13 @@ fn sensors_menu(session_status: &mut SessionStatus) {
                 pause!();
             }
             "2" => {
-                change_sensor_state();
-                println!("start/stop");
+                println!("Enter IP of sensor to change it's status:");
+                let sensor_ip = &get_user_choice();
+
+                let operation_status: (bool, bool, bool) = change_sensor_state(sensor_ip, session_status, file_mutexes, log_file);
+                if !operation_status.2 { println!("There is no sensor with this IP."); break; }
+                if !operation_status.1 { println!("Error occured with audit logging."); break; }
+                if !operation_status.0 { println!("System audit disabled")} else {println!("System audit enabled")};
                 pause!();
             }
             "3" => {

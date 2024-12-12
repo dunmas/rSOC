@@ -1,7 +1,10 @@
 use std::io::{self, Read, Write};
+use std::time::SystemTime;
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::{TcpListener, TcpStream}};
 use tokio::sync::mpsc;
-use crate::structs::soc_structs::SessionStatus;
+use crate::structs::soc_structs::{SessionStatus, AuditEventType};
+use crate::structs::soc_structs::multithread::FileMutexes;
+use crate::file_manager::file_manager::audit_handler::write_audit_event;
 
 pub fn get_sensor_list(session_status: &mut SessionStatus) {
     let sensors_map = session_status.sensor_list.lock().unwrap();
@@ -18,8 +21,23 @@ pub fn get_sensor_list(session_status: &mut SessionStatus) {
     println!("---------------------------------------------------------------------------------------------");
 }
 
-pub fn change_sensor_state() {
+pub fn change_sensor_state(sensor_ip: &String, session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String) -> (bool, bool, bool) {
+    let mut sensors_map = session_status.sensor_list.lock().unwrap();
 
+    for (ip, info) in sensors_map.iter_mut() {
+        if sensor_ip == ip {
+            info.3 = !info.3;
+
+            if info.3 {
+                return (true, write_audit_event(SystemTime::now(), (*info.1).to_string(), (*session_status.user).to_string(), AuditEventType::SenEnable, "Audit enabled".to_string(), file_mutexes, log_file), true)
+            } else {
+                return (false, write_audit_event(SystemTime::now(), (*info.1).to_string(), (*session_status.user).to_string(), AuditEventType::SenDisable, "Audit disabled".to_string(), file_mutexes, log_file), true)
+            }
+
+        }
+    }
+
+    (false, false, false)
 }
 
 pub fn update_sensor_rules() {

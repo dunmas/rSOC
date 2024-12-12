@@ -20,12 +20,15 @@ pub struct LogFiles {
 pub enum AuditEventType {
     AudEnable,
     AudDisable,
+    SenEnable,
+    SenDisable,
     UserLogon,
     FailLogon,
     NetSenConn,
     NetSenDisconn,
     HostSenConn,
-    HostSenDisconn
+    HostSenDisconn,
+    RulesUpdate    
 }
 
 pub mod multithread{
