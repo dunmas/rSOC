@@ -1,15 +1,11 @@
 use std::io::{self, Write};
 use std::collections::HashMap;
-use std::sync::mpsc;
-
-use futures::channel::mpsc::{Receiver, Sender};
-
 use crate::file_manager::file_manager::audit_handler::{change_audit_status, prepare_file_mutexes, get_10_latest_audit_messages};
 use crate::structs::soc_structs::multithread::FileMutexes;
 use crate::structs::soc_structs::{SessionStatus, LogFiles};
 use crate::file_manager::file_manager::event_handler::get_10_latest_event_messages;
 use crate::sensor_handler::rule_handler::{get_rules_list, add_rule, delete_rule};
-use crate::sensor_handler::sensor_handler::{get_sensor_list, change_sensor_state, update_sensor_rules};
+use crate::sensor_handler::sensor_handler::{get_sensor_list, change_sensor_state};
 
 const MAIN_MENU: &str = "\
         ------------------------------------------------------\n\
@@ -34,7 +30,6 @@ const SENSORS_MENU: &str = "\
             Select option:\n\
             1) List of sensors\n\
             2) Start/stop sensor\n\
-            3) Update rules\n\
             4) Back\n\
             ------------------------------------------------------";
 const AUDIT_MENU: &str = "\
@@ -74,11 +69,10 @@ pub async fn main_menu<'a>(session_status: &mut SessionStatus<'a>, log_files: &L
     loop {
         println!("{}", MAIN_MENU);
         let choise = get_user_choice();
-        let tx_copy = tx.clone();
 
         match choise.as_str() {
             "1" => event_menu(&file_mutexes),
-            "2" => sensors_menu(session_status, &file_mutexes, &log_files.audit_file, &log_files.rules_file, tx_copy),
+            "2" => sensors_menu(session_status, &file_mutexes, &log_files.audit_file),
             "3" => audit_menu(session_status, &file_mutexes, &log_files.audit_file),
             "4" => rule_menu(&log_files.rules_file),
             "5" => {
@@ -120,7 +114,7 @@ fn event_menu(file_mutexes: &FileMutexes) {
     }
 }
 
-fn sensors_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String, rules_file: &String, tx: tokio::sync::mpsc::Sender<&str>) {
+fn sensors_menu(session_status: &mut SessionStatus<'_>, file_mutexes: &FileMutexes, log_file: &String) {
     loop {
         println!("{}", SENSORS_MENU);
         let choise = get_user_choice();
@@ -141,15 +135,7 @@ fn sensors_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, 
                 if !operation_status.0 { println!("System audit disabled")} else {println!("System audit enabled")};
                 pause!();
             }
-            "3" => {
-                println!("Enter address of sensor to change it's status:");
-                let sensor_ip = &get_user_choice();
-
-                let status = update_sensor_rules(sensor_ip, session_status, file_mutexes, log_file, rules_file, tx.clone());
-                if !status { println!("Error while updateing rules.") }
-                pause!();
-            }
-            "4" => break,
+            "3" => break,
             _ => println!("Undefined option. Try again."),
         }
     }
