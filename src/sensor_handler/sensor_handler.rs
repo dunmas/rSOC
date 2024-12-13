@@ -19,7 +19,7 @@ pub fn get_sensor_list(session_status: &mut SessionStatus) {
     for (ip, info) in sensors_map.iter() {
         let status = if info.3 == true { "capturing" } else { "stopped" };
         let output_string = "|| ".to_string() + ip + " || " + &info.1 + " || " + &info.2 + " || " + status + " ||";
-        print!("{}", output_string);
+        println!("{}", output_string);
     }
 
     println!("---------------------------------------------------------------------------------------------");
@@ -74,6 +74,8 @@ pub async fn handle_client<'a>(mut stream: TcpStream, addr_str: String, mut clie
     // init_vec[0] - sensor_name, 1 - sensor_level, 2 - sensor user
     let init_vec: Vec<&str> = raw_init_string.split("[:1:]").collect();
     sensors_mutex_clone.lock().unwrap().insert(addr_str.clone(), (client_tx, init_vec[0].to_string(), init_vec[1].to_string(), true));
+
+    println!("Client connected! IP: {}, Name: {}, Level: {}, User: {}", addr_str, init_vec[0], init_vec[1], init_vec[2]);
     
     let mut buffer = [0; 1024];
     loop {
