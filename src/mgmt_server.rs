@@ -19,6 +19,11 @@ use std::collections::HashMap;
 use structs::soc_structs::{SessionStatus, LogFiles};
 use auth::auth::authentificate;
 use sensor_handler::sensor_handler::handle_client;
+use crate::structs::soc_structs::multithread::FileMutexes;
+use crate::file_manager::file_manager::audit_handler::prepare_file_mutexes;
+use crate::file_manager::file_manager::event_handler::write_security_event;
+use chrono::{DateTime, Local};
+use chrono::offset::Utc;
 
 const USER_LIST_FILE: &str = "users.txt";
 const AUDIT_LOG: &str = "audit.txt";
@@ -26,6 +31,7 @@ const EVENT_LOG: &str = "events.txt";
 const RULES_FILE: &str = "rules.txt";
 const HOSTNAME: &str = "MAMA-1 | Control centre";
 const LPORT: &str = "7777";
+const TIMEZONE: &str = "3";
 
 #[tokio::main]
 async fn main() {
@@ -55,8 +61,21 @@ async fn main() {
     
     let sensors: HashMap<String, (mpsc::Sender<String>, String, String, bool)> = HashMap::new();
     let sensors_mutex =  Arc::new(Mutex::new(sensors));
-
     let sensors_mutex_clone_for_rx = Arc::clone(&sensors_mutex);
+
+    let log_files = LogFiles {audit_file: AUDIT_LOG.to_string(),
+        event_file: EVENT_LOG.to_string(),
+        rules_file: RULES_FILE.to_string()};
+
+    let file_mutexes: FileMutexes = prepare_file_mutexes(&log_files);
+    let file_mutexes_clone = FileMutexes {
+        audit_mutex: Arc::clone(&file_mutexes.audit_mutex),
+        event_mutex: Arc::clone(&file_mutexes.event_mutex),
+        rules_mutex: Arc::clone(&file_mutexes.rules_mutex),
+    };
+
+    // to settings
+    let print_state = true;
 
     let listener;
 
@@ -79,10 +98,7 @@ async fn main() {
                     sensor_list: sensors_mutex
                 };
             
-                main_menu(current_session, &LogFiles {audit_file: AUDIT_LOG.to_string(),
-                                                                event_file: EVENT_LOG.to_string(),
-                                                                rules_file: RULES_FILE.to_string()},
-                                                                tx_clone).await;
+                main_menu(current_session, &log_files, tx_clone, &file_mutexes).await;
         });
     }
 
@@ -113,10 +129,24 @@ async fn main() {
                     break;
                 },
                 Some(ref cmd) if cmd.starts_with("cl_disc") => {
-                    // parced_cmd[1] - address of client
+                    // parced_cmd[1] - address of client, parced_cmd[2] - name of client
                     let parced_cmd: Vec<&str> = cmd.split("[:1:]").collect();
                     sensors_mutex_clone_for_rx.lock().unwrap().remove(parced_cmd[1]);
                     println!("Client disconnected: {} ({})", parced_cmd[1].to_string(), parced_cmd[2].to_string());
+                }
+                Some(ref cmd) if cmd.starts_with("event") => {
+                    // parced_cmd[1] - rule hash, parced_cmd[2] - UNIX-time, parced_cmd[3] - sensor name, parced_cmd[4] - level
+                    let parced_cmd: Vec<&str> = cmd.split("[:3:]").collect();
+                    let net_level = if parced_cmd[4] == "net" { true } else { false };
+
+                    let unix_time: i64 = parced_cmd[2].parse().unwrap();
+                    // TIMEZONE.parse().unwrap()
+                    let datetime: DateTime<Local> = DateTime::from_timestamp(unix_time, 0).unwrap().with_timezone(&Local);
+                    
+                    write_security_event(datetime, parced_cmd[3].to_string(), parced_cmd[1].to_string(), net_level, &file_mutexes_clone, &EVENT_LOG.to_string());
+                    if print_state {
+                        println!("Event! Time: {}, Sensor: {}", datetime.format("%d-%m-%Y %H:%M:%S").to_string(), parced_cmd[3].to_string());
+                    }
                 }
                 _ => {}
             }

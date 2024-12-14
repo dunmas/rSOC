@@ -1,13 +1,12 @@
 use std::io::{self, BufRead};
 use std::time::SystemTime;
-use std::fs;
+use std::fs::{self, File};
 use regex::Regex;
 use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
 use tokio::sync::mpsc;
 use crate::structs::soc_structs::{SessionStatus, AuditEventType};
 use crate::structs::soc_structs::multithread::FileMutexes;
 use crate::file_manager::file_manager::audit_handler::write_audit_event;
-use crate::file_manager::file_manager::event_handler::write_security_event;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 
@@ -104,8 +103,9 @@ pub async fn handle_client<'a>(mut stream: TcpStream, addr_str: String, mut clie
 
                             println!("Sended rules to {}", addr_str);
                         },
+                        // cmd_vec[1] - rule hash, cmd_vec[2] - UNIX-time
                         "event" => {
-                            // write_security_event();
+                            server_tx.send(raw_string.to_string() + "[:3:]" + init_vec[0] + "[:3:]" + init_vec[1]).await.unwrap();
                         }
                         _ => {}
                     }

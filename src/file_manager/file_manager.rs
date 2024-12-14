@@ -163,7 +163,7 @@ pub mod audit_handler {
 pub mod event_handler {
     use std::time::SystemTime;
     use chrono::DateTime;
-    use chrono::offset::Utc;
+    use chrono::offset::Local;
     use std::collections::HashMap;
     use std::io::{Read, Seek, Write};
     use std::fs::OpenOptions;
@@ -226,33 +226,31 @@ pub mod event_handler {
         }
     }
 
-    pub fn write_security_event(timestamp: SystemTime, host: String, rule_map: HashMap<&str, &str>, is_net_level: bool, file_mutexes: &FileMutexes, event_file: &String) -> bool {
+    pub fn write_security_event(timestamp: DateTime<Local>, host: String, rule_hash: String, is_net_level: bool, file_mutexes: &FileMutexes, event_file: &String) -> bool {
         let mut event_file_mutex = file_mutexes.event_mutex.lock().unwrap();
-        let time_string: DateTime<Utc> = timestamp.into();
 
         let is_net_rule_string: String = if is_net_level { String::from("network") } else { String::from("host") };
-        let mut rule_params_string: String = "".to_string();
+        // let mut rule_params_string: String = "".to_string();
 
-        for entry in rule_map {
-            rule_params_string.push_str(&entry.0);
-            rule_params_string += "[:1:]";
-            rule_params_string.push_str(&entry.1);
-            rule_params_string += "[:2:]";
-        }
+        // for entry in rule_map {
+        //     rule_params_string.push_str(&entry.0);
+        //     rule_params_string += "[:1:]";
+        //     rule_params_string.push_str(&entry.1);
+        //     rule_params_string += "[:2:]";
+        // }
         
-        let mut rps_len = rule_params_string.len();
+        // let mut rps_len = rule_params_string.len();
         
-        for _ in 0..5 {
-            rule_params_string.remove(rps_len - 1);
-            rps_len -= 1;
-        }
+        // for _ in 0..5 {
+        //     rule_params_string.remove(rps_len - 1);
+        //     rps_len -= 1;
+        // }
 
-        let mut basic_list_string: String = vec![time_string.format("%d-%m-%Y %H:%M:%S").to_string(),
+        let basic_list_string: String = vec![timestamp.format("%d-%m-%Y %H:%M:%S").to_string(),
                                             host,
-                                            is_net_rule_string]
-                         .join("[:2:]")
-                         + "[:3:]"; 
-        basic_list_string.push_str(&rule_params_string);
+                                            is_net_rule_string,
+                                            rule_hash]
+                         .join("[:2:]");
 
         let result = match writeln!(event_file_mutex, "{}", basic_list_string) {
             Ok(_) => true,
@@ -275,28 +273,18 @@ pub mod event_handler {
     fn console_output(data_vec: Vec<String>) {
         let mut result: String = String::new();
         let header: String = String::from("-------------------------------------------------------------------------------------------\n\
-                                           || -------------------------------- Time, Hostname, Level ------------------------------ ||\n");
+                                           || -------------------------------- Time, Hostname, Level, Rule hash ------------------- ||\n");
 
         for raw_string in data_vec {
             if raw_string.is_empty() { continue; }
             result.push_str(&header);
-            let modules: Vec<&str> = raw_string.split("[:3:]").collect();
+            let params: Vec<&str> = raw_string.split("[:2:]").collect();
 
-            for param in modules[0].split("[:2:]") {
+            for param in params {
                 result = result + "|| --- " + param + " --- ";
             }
 
             result += "||\n";
-            result += "|| --------------------------------------- Rule content -------------------------------- ||\n";
-
-            for param_pair in modules[1].split("[:2:]") {
-                let pair_vec: Vec<&str> = param_pair.split("[:1:]").collect();
-
-                result += pair_vec[0];
-                result += " : ";
-                result += pair_vec[1];
-                result += "\n";
-            }
         }
 
         println!("{}", result);
