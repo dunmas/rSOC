@@ -13,6 +13,7 @@ mod structs;
 mod sensor_handler;
 mod auth;
 
+const SENSOR_NAME: &str = "Zarya-1";
 const USERNAME: &str = "net_admin";
 const LEVEL: &str = "net";
 const RULES_FILE: &str = "net_rules.txt";
@@ -24,10 +25,9 @@ async fn main() {
         .author("buran <bvran@proton.me>")
         .about("rSOC - Simple network and endpoint SOC implementation written on Rust\n\nThis is Network Sensor - traffic analyzer of SOC")
         .arg(Arg::new("rules_update")
-                 .short('u')
-                 .long("update")
-                 .action(clap::ArgAction::SetTrue)
-                 .help("Update sensor rules"))     
+                 .short('c')
+                 .long("command")
+                 .help("Type 'update' to update sensor rules. (BTW now you can type anything to update)"))     
         .get_matches();
 
     println!("Enter IP of management server:");
@@ -35,7 +35,7 @@ async fn main() {
 
     match TcpStream::connect(mgmt_server.as_str()) {
         Ok(mut stream) => {
-            let init_message = "init[:1:]".to_string() + LEVEL + "[:1:]" + USERNAME;
+            let init_message = SENSOR_NAME.to_string() + "[:1:]" + LEVEL + "[:1:]" + USERNAME;
             let init_message_byte_fmt = init_message.as_bytes();
             let mut buffer = [0; 1024];
             stream.write(init_message_byte_fmt).unwrap();
@@ -64,25 +64,28 @@ async fn main() {
                      }
                 }
             }
+            
+            let rules_mutex = Arc::new(Mutex::new(OpenOptions::new()
+            .append(true)
+            .create(true)
+            .read(true)
+            .open(RULES_FILE)
+            .unwrap()));
+            
+            let rules_vec;
+            if let Some(data_vec) =  get_rules_map(&rules_mutex).get(LEVEL) {
+                rules_vec = data_vec;
+            } else {
+                println!("Error with parcing rules. Check rules file.");
+                return;
+            }
 
             loop {
                 let size = stream.read(&mut buffer).unwrap();
                 match size {
                     0 => { println!("Server disconnected. Stop working..."); },
                     _ => {
-                        let rules_mutex = Arc::new(Mutex::new(OpenOptions::new()
-                        .create(true)
-                        .read(true)
-                        .open(RULES_FILE)
-                        .unwrap()));
-                        
-                        let rules_vec;
-                        if let Some(data_vec) =  get_rules_map(&rules_mutex).get(LEVEL) {
-                            rules_vec = data_vec;
-                        } else {
-                            println!("Error with parcing rules. Check rules file.");
-                            break;
-                        }
+
 
                         
                      }

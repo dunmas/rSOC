@@ -116,7 +116,7 @@ async fn main() {
                     // parced_cmd[1] - address of client
                     let parced_cmd: Vec<&str> = cmd.split("[:1:]").collect();
                     sensors_mutex_clone_for_rx.lock().unwrap().remove(parced_cmd[1]);
-                    println!("Client disconnected: {}", parced_cmd[1].to_string());
+                    println!("Client disconnected: {} ({})", parced_cmd[1].to_string(), parced_cmd[2].to_string());
                 }
                 _ => {}
             }
