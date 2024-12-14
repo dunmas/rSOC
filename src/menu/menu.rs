@@ -1,5 +1,7 @@
 use std::io::{self, Write};
 use std::collections::HashMap;
+use std::os::linux::net;
+use regex::Regex;
 use crate::file_manager::file_manager::audit_handler::{change_audit_status, prepare_file_mutexes, get_10_latest_audit_messages};
 use crate::structs::soc_structs::multithread::FileMutexes;
 use crate::structs::soc_structs::{SessionStatus, LogFiles};
@@ -223,6 +225,7 @@ fn add_rule_interface() -> ((HashMap<String, String>, HashMap<String, String>), 
         ("description".to_string(), "".to_string()),
     ].into_iter().collect();
     let mut optional_fields_map: HashMap<String, String> = HashMap::new();
+    let level: &str;
 
     println!("Enter rule level (net/host): ");
     match get_user_choice().as_str() {
@@ -234,9 +237,10 @@ fn add_rule_interface() -> ((HashMap<String, String>, HashMap<String, String>), 
                 println!("Can't write empty value. Try again.");
                 return ((HashMap::new(), HashMap::new()), false);
             }
-            basic_fields.insert("protocol".to_string(), data);
+            optional_fields_map.insert("protocol".to_string(), data);
+            level = "net";
         },
-        "host" => { basic_fields.insert("level".to_string(), "host".to_string()); },
+        "host" => { basic_fields.insert("level".to_string(), "host".to_string()); level = "host"; },
         _ => { println!("Wrong rule level. Try again."); return ((HashMap::new(), HashMap::new()), false); }
     }
 
@@ -256,34 +260,81 @@ fn add_rule_interface() -> ((HashMap<String, String>, HashMap<String, String>), 
     }
     basic_fields.insert("description".to_string(), data);
 
-    println!("Enter rule payload (for host level, else anything): ");
-    let data = get_user_choice();
-    if data.is_empty() { 
-        println!("Can't write empty value. Try again.");
-        return ((HashMap::new(), HashMap::new()), false);
-    }
-    basic_fields.insert("payload".to_string(), data);
+    if level == "host" {
+        println!("Enter rule payload: ");
+        let data = get_user_choice();
+        if data.is_empty() { 
+            println!("Can't write empty value. Try again.");
+            return ((HashMap::new(), HashMap::new()), false);
+        }
+        basic_fields.insert("payload".to_string(), data);
+    } else {
+        basic_fields.insert("payload".to_string(), " ".to_string());
 
-    let mut count: u32 = 0;
-    let mut cycle_flag = false;
+        let mut net_payload_flag = false;
+        while !net_payload_flag {
+            println!("What field you want to setup as trigger? (src/dst/both): ");
+            let re = Regex::new(r"^([0-9a-f]{2}[:]){5}([0-9a-f]{2})$").unwrap();
+            let mut mac_addr_str: String;
+    
+            match get_user_choice().as_str() {
+                "src" => {
+                    println!("Enter source MAC-address (':' as separator):");
+                    mac_addr_str = get_user_choice().as_str().to_lowercase();
+                    if re.is_match(mac_addr_str.as_str()) { 
+                        net_payload_flag = true;
+                        optional_fields_map.insert("src".to_string(), mac_addr_str);
+                        optional_fields_map.insert("dst".to_string(), " ".to_string());
+                    } else { println!("Wrong MAC format. Try again"); }
+                },
+                "dst" => {
+                    println!("Enter destination MAC-address (':' as separator):");
+                    mac_addr_str = get_user_choice().as_str().to_lowercase();
+                    if re.is_match(mac_addr_str.as_str()) { 
+                        net_payload_flag = true;
+                        optional_fields_map.insert("dst".to_string(), mac_addr_str);
+                        optional_fields_map.insert("src".to_string(), " ".to_string());
+                    } else { println!("Wrong MAC format. Try again"); }
+                },
+                "both" => {
+                    println!("Enter source MAC-address (':' as separator):");
+                    mac_addr_str = get_user_choice().as_str().to_lowercase();
+                    if re.is_match(mac_addr_str.as_str()) { 
+                        optional_fields_map.insert("src".to_string(), mac_addr_str);
+                    } else { println!("Wrong MAC format. Try again"); }
 
-    while !cycle_flag {
-        println!("Enter count of optional fields: ");
-        match get_user_choice().parse::<u32>() {
-            Ok(number) => { count = number; cycle_flag = true; },
-            Err(_e) => { println!("Error parsing number. Try again"); }
+                    println!("Enter destination MAC-address (':' as separator):");
+                    mac_addr_str = get_user_choice().as_str().to_lowercase();
+                    if re.is_match(mac_addr_str.as_str()) { 
+                        net_payload_flag = true;
+                        optional_fields_map.insert("dst".to_string(), mac_addr_str);
+                    } else { println!("Wrong MAC format. Try again"); }
+                },
+                _ => { println!("Error parsing parameter. Try again"); }
+            }
         }
     }
 
-    if count > 0 {
-        for i in 0..count {
-            println!("{}. Enter field name: ", i+1);
-            let fname = get_user_choice();
-            println!("{}. Enter field value: ", i+1);
-            let fvalue = get_user_choice();
-            optional_fields_map.insert(fname.to_string(), fvalue.to_string());
-        }
-    }
+    // let mut count: u32 = 0;
+    // let mut cycle_flag = false;
+
+    // while !cycle_flag {
+    //     println!("Enter count of optional fields (0 if none): ");
+    //     match get_user_choice().parse::<u32>() {
+    //         Ok(number) => { count = number; cycle_flag = true; },
+    //         Err(_e) => { println!("Error parsing number. Try again"); }
+    //     }
+    // }
+
+    // if count > 0 {
+    //     for i in 0..count {
+    //         println!("{}. Enter field name: ", i+1);
+    //         let fname = get_user_choice();
+    //         println!("{}. Enter field value: ", i+1);
+    //         let fvalue = get_user_choice();
+    //         optional_fields_map.insert(fname.to_string(), fvalue.to_string());
+    //     }
+    // }
 
     ((basic_fields, optional_fields_map), true)
 }

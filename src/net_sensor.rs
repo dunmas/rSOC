@@ -22,7 +22,7 @@ const SENSOR_NAME: &str = "Zarya-1";
 const USERNAME: &str = "net_admin";
 const LEVEL: &str = "net";
 const RULES_FILE: &str = "net_rules.txt";
-const LISTEN_INTERFACE: &str = "lo";
+const LISTEN_INTERFACE: &str = "eth0";
 
 #[tokio::main]
 async fn main() {
@@ -75,7 +75,7 @@ async fn main() {
                         };
 
                         return;
-                     }
+                    }
                 }
             }
             
@@ -85,14 +85,16 @@ async fn main() {
             .read(true)
             .open(RULES_FILE)
             .unwrap()));
-            
-            let rules_vec;
+                       
             if let Some(data_vec) =  get_rules_map(&rules_mutex).get(LEVEL) {
-                rules_vec = data_vec;
+                // rules_vec = data_vec;
             } else {
                 println!("Error with parcing rules. Check rules file.");
                 return;
             }
+
+            let all_rules_map = get_rules_map(&rules_mutex);
+            let rules_vec = all_rules_map.get(LEVEL).unwrap();
 
             // Packet tracer channel
             let (mut tx, mut rx) = match datalink::channel(&interface, Default::default()) {
@@ -101,14 +103,41 @@ async fn main() {
             };
 
             loop {
-                let size = stream.read(&mut buffer).unwrap();
-                match size {
-                    0 => { println!("Server disconnected. Stop working..."); },
-                    _ => {
-                        // later
-                        continue;
-                     }
+                match rx.next() {
+                    Ok(packet) => {
+                        let ethernet_packet = EthernetPacket::new(packet).unwrap();
+
+                        if ethernet_packet.get_ethertype() == EtherTypes::Ipv4 {
+                            for rule in rules_vec {
+                                for pairs_vector in rule {
+                                    if let Some((key, value)) = pairs_vector.1.iter().find(|(k, v)| *v == ethernet_packet.get_source().to_string() && k == "src") {
+                                        
+                                        
+                                        println!("Found: {} -> {}", key, value);
+                                    } 
+
+                                    if let Some((key, value)) = pairs_vector.1.iter().find(|(k, v)| *v == ethernet_packet.get_destination().to_string() && k == "dst") {
+                                        
+                                        
+                                        println!("Found: {} -> {}", key, value);
+                                    } 
+                                }
+                            }
+                        }
+                    },
+                    Err(e) => {
+                        eprintln!("Error receiving packet: {}", e);
+                    }
                 }
+
+                // let size = stream.read(&mut buffer).unwrap();
+                // match size {
+                //     0 => { println!("Server disconnected. Stop working..."); },
+                //     _ => {
+                //         // later
+                //         continue;
+                //      }
+                // }
             }
         }
         Err(e) => {

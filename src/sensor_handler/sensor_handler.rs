@@ -7,6 +7,7 @@ use tokio::sync::mpsc;
 use crate::structs::soc_structs::{SessionStatus, AuditEventType};
 use crate::structs::soc_structs::multithread::FileMutexes;
 use crate::file_manager::file_manager::audit_handler::write_audit_event;
+use crate::file_manager::file_manager::event_handler::write_security_event;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 
@@ -103,6 +104,9 @@ pub async fn handle_client<'a>(mut stream: TcpStream, addr_str: String, mut clie
 
                             println!("Sended rules to {}", addr_str);
                         },
+                        "event" => {
+                            // write_security_event();
+                        }
                         _ => {}
                     }
                 }
