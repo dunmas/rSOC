@@ -24,7 +24,7 @@ pub fn get_rules_list(rule_type: &str, file_mutexes: &FileMutexes) {
     }
 }
 
-pub fn add_rule(rule_level: String, rule_name: String, rule_payload: String, rule_fields: &HashMap<String, String>, rules_file: &String, file_mutexes: &FileMutexes) -> bool {
+pub fn add_rule(rule_level: String, rule_name: String, rule_payload: String, rule_description: String, rule_fields: &HashMap<String, String>, rules_file: &String, file_mutexes: &FileMutexes) -> bool {
     let mut locked_rules_file = file_mutexes.rules_mutex.lock().unwrap();
 
     let hashing_str = rule_name.to_string() + rule_payload.as_str();

@@ -185,12 +185,14 @@ fn rule_menu(file_mutexes: &FileMutexes, rule_file: &String) {
                 let level = _rule_map.0.0.get("level").unwrap().to_string();
                 let name = _rule_map.0.0.get("name").unwrap().to_string();
                 let desc = _rule_map.0.0.get("description").unwrap().to_string();
+                let payload = _rule_map.0.0.get("payload").unwrap().to_string();
                 
                 add_rule(level,
                          name, 
-                      desc,
-                       &_rule_map.0.1,
-                        rule_file,
+                         payload,
+                         desc,
+                         &_rule_map.0.1,
+                         rule_file,
                                    file_mutexes);
                 pause!();
             }
