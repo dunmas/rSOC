@@ -4,6 +4,8 @@ use crate::menu::menu::get_user_choice;
 use clap::{Arg, Command};
 use tokio::time::{sleep, Duration};
 use std::fs::OpenOptions;
+use crate::sensor_handler::rule_handler::get_rules_map;
+use std::sync::{Arc, Mutex};
 
 mod menu;
 mod file_manager;
@@ -14,20 +16,6 @@ mod auth;
 const USERNAME: &str = "net_admin";
 const LEVEL: &str = "net";
 const RULES_FILE: &str = "net_rules.txt";
-
-macro_rules! pause {
-    () => {{
-        println!(
-            "------------------------------------------------------\n\
-             Press enter to continue..."
-        );
-        let mut buffer = String::new();
-
-        std::io::stdin()
-            .read_line(&mut buffer)
-            .expect("Failed to read line");
-    }};
-}
 
 #[tokio::main]
 async fn main() {
@@ -81,9 +69,22 @@ async fn main() {
                 let size = stream.read(&mut buffer).unwrap();
                 match size {
                     0 => { println!("Server disconnected. Stop working..."); },
-                    _ => { 
+                    _ => {
+                        let rules_mutex = Arc::new(Mutex::new(OpenOptions::new()
+                        .create(true)
+                        .read(true)
+                        .open(RULES_FILE)
+                        .unwrap()));
+                        
+                        let rules_vec;
+                        if let Some(data_vec) =  get_rules_map(&rules_mutex).get(LEVEL) {
+                            rules_vec = data_vec;
+                        } else {
+                            println!("Error with parcing rules. Check rules file.");
+                            break;
+                        }
 
-                        break;
+                        
                      }
                 }
             }

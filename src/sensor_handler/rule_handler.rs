@@ -5,11 +5,12 @@ use std::mem;
 use regex::Regex;
 use sha2::{Sha256, Digest};
 use std::io::Seek;
+use std::sync::{Arc, Mutex};
 
 use crate::structs::soc_structs::multithread::FileMutexes;
 
 pub fn get_rules_list(rule_type: &str, file_mutexes: &FileMutexes) {
-    if let Some(rules_vec_by_level) =  get_rules_map(file_mutexes).get(rule_type) {
+    if let Some(rules_vec_by_level) =  get_rules_map(&file_mutexes.rules_mutex).get(rule_type) {
         for level_rule in rules_vec_by_level {
             let rule_hash_vec: Vec<String> = level_rule.clone().into_keys().collect();
             let rule_hash: &String = rule_hash_vec.first().unwrap();
@@ -38,6 +39,7 @@ pub fn add_rule(rule_level: String, rule_name: String, rule_payload: String, rul
     param_vec.push("hash".to_string() + "[:1:]" + &hash);
     param_vec.push("name".to_string() + "[:1:]" + &rule_name);
     param_vec.push("payload".to_string() + "[:1:]" + &rule_payload);
+    param_vec.push("description".to_string() + "[:1:]" + &rule_description);
     
     for opt_pair in rule_fields {
         if opt_pair.0.is_empty() { continue }
@@ -115,8 +117,8 @@ pub fn delete_rule(rule_level: &String, rule_hash: &String, rules_file: &String,
     println!("Rule deleted successfully.");
 }
 
-pub fn get_rules_map(file_mutexes: &FileMutexes) -> HashMap<String, Vec<HashMap<String, Vec<(String, String)>>>> {
-    let mut file = file_mutexes.rules_mutex.lock().unwrap();
+pub fn get_rules_map(rules_mutex: &Arc<Mutex<std::fs::File>>) -> HashMap<String, Vec<HashMap<String, Vec<(String, String)>>>> {
+    let mut file = rules_mutex.lock().unwrap();
     let buf: &mut String = &mut "".to_owned();
     let mut result: HashMap<String, Vec<HashMap<String, Vec<(String, String)>>>> = HashMap::new();
 

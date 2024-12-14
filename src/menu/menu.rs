@@ -256,7 +256,7 @@ fn add_rule_interface() -> ((HashMap<String, String>, HashMap<String, String>), 
     }
     basic_fields.insert("description".to_string(), data);
 
-    println!("Enter rule payload: ");
+    println!("Enter rule payload (for host level, else anything): ");
     let data = get_user_choice();
     if data.is_empty() { 
         println!("Can't write empty value. Try again.");
