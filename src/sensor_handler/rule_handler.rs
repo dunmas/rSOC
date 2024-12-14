@@ -40,7 +40,9 @@ pub fn add_rule(rule_level: String, rule_name: String, rule_payload: String, rul
     param_vec.push("payload".to_string() + "[:1:]" + &rule_payload);
     
     for opt_pair in rule_fields {
-        let joined_string = opt_pair.0.to_string() + "[:1:]" + opt_pair.1;
+        if opt_pair.0.is_empty() { continue }
+
+        let joined_string = opt_pair.0.to_string() + "[:1:]" + if opt_pair.1.is_empty() { " " } else { opt_pair.1 };
         param_vec.push(joined_string);
     }
 

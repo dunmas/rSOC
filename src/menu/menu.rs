@@ -227,20 +227,40 @@ fn add_rule_interface() -> ((HashMap<String, String>, HashMap<String, String>), 
         "net" => {
             basic_fields.insert("level".to_string(), "net".to_string());
             println!("Enter rule protocol: ");
-            optional_fields_map.insert("protocol".to_string(), get_user_choice());
+            let data = get_user_choice();
+            if data.is_empty() { 
+                println!("Can't write empty value. Try again.");
+                return ((HashMap::new(), HashMap::new()), false);
+            }
+            basic_fields.insert("protocol".to_string(), data);
         },
         "host" => { basic_fields.insert("level".to_string(), "host".to_string()); },
         _ => { println!("Wrong rule level. Try again."); return ((HashMap::new(), HashMap::new()), false); }
     }
 
     println!("Enter rule name: ");
-    basic_fields.insert("name".to_string(), get_user_choice());
+    let data = get_user_choice();
+    if data.is_empty() { 
+        println!("Can't write empty value. Try again.");
+        return ((HashMap::new(), HashMap::new()), false);
+    }
+    basic_fields.insert("name".to_string(), data);
 
     println!("Enter rule description: ");
-    basic_fields.insert("description".to_string(), get_user_choice());
+    let data = get_user_choice();
+    if data.is_empty() { 
+        println!("Can't write empty value. Try again.");
+        return ((HashMap::new(), HashMap::new()), false);
+    }
+    basic_fields.insert("description".to_string(), data);
 
     println!("Enter rule payload: ");
-    basic_fields.insert("payload".to_string(), get_user_choice());
+    let data = get_user_choice();
+    if data.is_empty() { 
+        println!("Can't write empty value. Try again.");
+        return ((HashMap::new(), HashMap::new()), false);
+    }
+    basic_fields.insert("payload".to_string(), data);
 
     let mut count: u32 = 0;
     let mut cycle_flag = false;
