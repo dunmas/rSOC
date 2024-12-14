@@ -7,6 +7,11 @@ use std::fs::OpenOptions;
 use crate::sensor_handler::rule_handler::get_rules_map;
 use std::sync::{Arc, Mutex};
 
+// traffic sniffer
+use pnet::datalink::{self, Channel::Ethernet, NetworkInterface};
+use pnet::packet::{Packet, ethernet::{EthernetPacket, EtherTypes}};
+use std::env;
+
 mod menu;
 mod file_manager;
 mod structs;
@@ -17,6 +22,7 @@ const SENSOR_NAME: &str = "Zarya-1";
 const USERNAME: &str = "net_admin";
 const LEVEL: &str = "net";
 const RULES_FILE: &str = "net_rules.txt";
+const LISTEN_INTERFACE: &str = "lo";
 
 #[tokio::main]
 async fn main() {
@@ -29,6 +35,14 @@ async fn main() {
                  .long("command")
                  .help("Type 'update' to update sensor rules. (BTW now you can type anything to update)"))     
         .get_matches();
+
+    let interfaces = datalink::interfaces();
+    let interface;
+
+    match interfaces.into_iter().find(|iface| iface.name == LISTEN_INTERFACE) {
+        Some(res) => { interface = res },
+        _ => { println!("Can't find such interface. Check sensor settings."); return; }
+    }
 
     println!("Enter IP of management server:");
     let mgmt_server = get_user_choice();
@@ -80,14 +94,19 @@ async fn main() {
                 return;
             }
 
+            // Packet tracer channel
+            let (mut tx, mut rx) = match datalink::channel(&interface, Default::default()) {
+                Ok(Ethernet(tx, rx)) => (tx, rx),
+                _ => { println!("Failed to create channel"); return; },
+            };
+
             loop {
                 let size = stream.read(&mut buffer).unwrap();
                 match size {
                     0 => { println!("Server disconnected. Stop working..."); },
                     _ => {
-
-
-                        
+                        // later
+                        continue;
                      }
                 }
             }
