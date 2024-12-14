@@ -28,7 +28,7 @@ pub enum AuditEventType {
     NetSenDisconn,
     HostSenConn,
     HostSenDisconn,
-    RulesUpdate    
+    RulesUpdate
 }
 
 pub mod multithread{

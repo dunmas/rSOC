@@ -10,17 +10,18 @@ use std::thread;
 use tokio::sync::mpsc;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::spawn;
+use std::time::SystemTime;
 
 use clap::{Arg, Command};
 use std::sync::{Arc, Mutex};
 use futures::channel;
 use menu::menu::main_menu;
 use std::collections::HashMap;
-use structs::soc_structs::{SessionStatus, LogFiles};
+use structs::soc_structs::{AuditEventType, LogFiles, SessionStatus};
 use auth::auth::authentificate;
 use sensor_handler::sensor_handler::handle_client;
 use crate::structs::soc_structs::multithread::FileMutexes;
-use crate::file_manager::file_manager::audit_handler::prepare_file_mutexes;
+use crate::file_manager::file_manager::audit_handler::{prepare_file_mutexes, write_audit_event};
 use crate::file_manager::file_manager::event_handler::write_security_event;
 use chrono::{DateTime, Local};
 use chrono::offset::Utc;
@@ -129,11 +130,18 @@ async fn main() {
                     break;
                 },
                 Some(ref cmd) if cmd.starts_with("cl_disc") => {
-                    // parced_cmd[1] - address of client, parced_cmd[2] - name of client
+                    // parced_cmd[1] - address of client, parced_cmd[2] - name of client, parced_cmd[3] - level of client
                     let parced_cmd: Vec<&str> = cmd.split("[:1:]").collect();
                     sensors_mutex_clone_for_rx.lock().unwrap().remove(parced_cmd[1]);
                     println!("Client disconnected: {} ({})", parced_cmd[1].to_string(), parced_cmd[2].to_string());
                 }
+                Some(ref cmd) if cmd.starts_with("init") => {
+                    // parced_cmd[1] - name of client, parced_cmd[2] - client type, parced_cmd[3] - client user
+                    let init_vec: Vec<&str> = cmd.split("[:1:]").collect();
+                    let event_type = if init_vec[2] == "net" { AuditEventType::NetSenConn } else { AuditEventType::HostSenConn };
+                    write_audit_event(SystemTime::now(), init_vec[1].to_string(), init_vec[3].to_string(), event_type, "Sensor connected. Type - ".to_string() + init_vec[2], &file_mutexes_clone, &AUDIT_LOG.to_string());
+                }
+                
                 Some(ref cmd) if cmd.starts_with("event") => {
                     // parced_cmd[1] - rule hash, parced_cmd[2] - UNIX-time, parced_cmd[3] - sensor name, parced_cmd[4] - level
                     let parced_cmd: Vec<&str> = cmd.split("[:3:]").collect();

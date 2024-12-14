@@ -40,7 +40,7 @@ pub mod user_file_handler {
 pub mod audit_handler {
     use std::time::SystemTime;
     use chrono::DateTime;
-    use chrono::offset::Utc;
+    use chrono::offset::Local;
     use std::io::{Read, Seek, Write};
     use std::fs::OpenOptions;
     use std::sync::{Arc, Mutex};
@@ -104,7 +104,7 @@ pub mod audit_handler {
 
     pub fn write_audit_event(timestamp: SystemTime, host: String, user: String, event_type: AuditEventType, message: String, file_mutexes: &FileMutexes, log_file: &String) -> bool {
         let mut audit_file = file_mutexes.audit_mutex.lock().unwrap();
-        let time_string: DateTime<Utc> = timestamp.into();
+        let time_string: DateTime<Local> = timestamp.into();
         let params_list = vec![time_string.format("%d-%m-%Y %H:%M:%S").to_string(),
                                             host,
                                             user,

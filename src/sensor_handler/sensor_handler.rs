@@ -76,7 +76,8 @@ pub async fn handle_client<'a>(mut stream: TcpStream, addr_str: String, mut clie
     sensors_mutex_clone.lock().unwrap().insert(addr_str.clone(), (client_tx, init_vec[0].to_string(), init_vec[1].to_string(), true));
 
     println!("Client connected! IP: {}, Name: {}, Level: {}, User: {}", addr_str, init_vec[0], init_vec[1], init_vec[2]);
-    
+    server_tx.send("init[:1:]".to_string() + &raw_init_string).await.unwrap();
+
     let mut buffer = [0; 1024];
     loop {
         tokio::select! {
