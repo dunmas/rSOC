@@ -3,4 +3,5 @@ users.txt
 audit.txt
 events.txt
 rules.txt
+net_rules.txt
 .vscode

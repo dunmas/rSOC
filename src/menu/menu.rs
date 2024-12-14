@@ -62,9 +62,8 @@ macro_rules! pause {
     }};
 }
 
-pub async fn main_menu<'a>(session_status: &mut SessionStatus<'a>, log_files: &LogFiles, tx: tokio::sync::mpsc::Sender<String>) {
+pub async fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles, tx: tokio::sync::mpsc::Sender<String>) {
     let file_mutexes: FileMutexes = prepare_file_mutexes(log_files);
-    // add rules file checker
 
     loop {
         println!("{}", MAIN_MENU);
@@ -85,7 +84,7 @@ pub async fn main_menu<'a>(session_status: &mut SessionStatus<'a>, log_files: &L
     }
 }
 
-fn get_user_choice() -> String {
+pub fn get_user_choice() -> String {
     let mut choice = String::new();
     io::stdout().flush().unwrap();
     io::stdin().read_line(&mut choice).expect("Input error.");
@@ -114,7 +113,7 @@ fn event_menu(file_mutexes: &FileMutexes) {
     }
 }
 
-fn sensors_menu(session_status: &mut SessionStatus<'_>, file_mutexes: &FileMutexes, log_file: &String) {
+fn sensors_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String) {
     loop {
         println!("{}", SENSORS_MENU);
         let choise = get_user_choice();

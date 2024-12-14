@@ -61,7 +61,7 @@ fn get_rules_string_by_level(level: String, rule_file: &String) -> String {
     tx_string
 }
 
-pub async fn handle_client<'a>(mut stream: TcpStream, addr_str: String, mut client_rx: mpsc::Receiver<&str>, rule_file: &String, sensors_mutex_clone: Arc<Mutex<HashMap<String, (mpsc::Sender<&'a str>, String, String, bool)>>>, client_tx: mpsc::Sender<&'a str>, server_tx: mpsc::Sender<String>) -> io::Result<()> {
+pub async fn handle_client<'a>(mut stream: TcpStream, addr_str: String, mut client_rx: mpsc::Receiver<String>, rule_file: &String, sensors_mutex_clone: Arc<Mutex<HashMap<String, (mpsc::Sender<String>, String, String, bool)>>>, client_tx: mpsc::Sender<String>, server_tx: mpsc::Sender<String>) -> io::Result<()> {
     let mut init_buffer = [0; 1024];
 
     // Init string from client
@@ -100,6 +100,8 @@ pub async fn handle_client<'a>(mut stream: TcpStream, addr_str: String, mut clie
                                 println!("Error while sending rules to client {}: {}", addr_str, e);
                                 continue;
                             }
+
+                            println!("Sended rules to {}", addr_str);
                         },
                         _ => {}
                     }

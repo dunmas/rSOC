@@ -53,7 +53,7 @@ async fn main() {
     // let auth_res = authentificate(&input_username, &input_password, &USER_LIST_FILE.to_string());
     // if auth_res.0 { username = auth_res.1; } else { return; }
     
-    let sensors: HashMap<String, (mpsc::Sender<&str>, String, String, bool)> = HashMap::new();
+    let sensors: HashMap<String, (mpsc::Sender<String>, String, String, bool)> = HashMap::new();
     let sensors_mutex =  Arc::new(Mutex::new(sensors));
 
     let sensors_mutex_clone_for_rx = Arc::clone(&sensors_mutex);
@@ -93,7 +93,7 @@ async fn main() {
                 Ok((stream, addr)) => {
                     // check address format: port is required
                     let addr_str = format!("{}", addr);
-                    let (client_tx, client_rx) = mpsc::channel::<&str>(32);
+                    let (client_tx, client_rx) = mpsc::channel::<String>(32);
                     let main_tx = tx.clone();
                     let sensors_mutex_clone_for_clients = Arc::clone(&sensors_mutex_clone_for_rx);
                     let server_tx_clone = tx.clone();
