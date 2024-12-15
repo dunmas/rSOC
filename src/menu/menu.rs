@@ -71,10 +71,10 @@ pub async fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles,
         let choise = get_user_choice();
 
         match choise.as_str() {
-            "1" => event_menu(&file_mutexes),
+            "1" => event_menu(session_status, &file_mutexes),
             "2" => sensors_menu(session_status, &file_mutexes, &log_files.audit_file, audit_status),
             "3" => audit_menu(session_status, &file_mutexes, &log_files.audit_file, audit_status),
-            "4" => rule_menu(&file_mutexes, &log_files.rules_file),
+            "4" => rule_menu(session_status, &file_mutexes, &log_files.rules_file),
             "5" => {
                 println!("Goodbye.");
                 tx.send("stop".to_string()).await.unwrap();
@@ -92,7 +92,7 @@ pub fn get_user_choice() -> String {
     choice.trim().to_string()
 }
 
-fn event_menu(file_mutexes: &FileMutexes) {
+fn event_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes) {
     loop {
         println!("{}", EVENT_MENU);
         let choise = get_user_choice();
@@ -126,6 +126,11 @@ fn sensors_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, 
                 pause!();
             }
             "2" => {
+                if !session_status.is_admin {
+                    println!("Admin privileges required.");
+                    continue;
+                }
+
                 println!("Enter address of sensor to change it's status:");
                 let sensor_ip = &get_user_choice();
 
@@ -149,6 +154,11 @@ fn audit_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, lo
 
         match choise.as_str() {
             "1" => {
+                if !session_status.is_admin {
+                    println!("Admin privileges required.");
+                    continue;
+                }
+
                 let operation_status: (bool, bool) = change_audit_status(audit_status, session_status.host.clone(), session_status.user.clone(), file_mutexes, log_file);
                 if !operation_status.1 {println!("Error occured with audit logging."); break;}
                 if !operation_status.0 {println!("System audit disabled")} else {println!("System audit enabled")};
@@ -164,7 +174,7 @@ fn audit_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, lo
     }
 }
 
-fn rule_menu(file_mutexes: &FileMutexes, rule_file: &String) {
+fn rule_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, rule_file: &String) {
     loop {
         println!("{}", RULE_MENU);
         let choise = get_user_choice();
@@ -182,6 +192,11 @@ fn rule_menu(file_mutexes: &FileMutexes, rule_file: &String) {
                 pause!();
             }
             "2" => {
+                if !session_status.is_admin {
+                    println!("Admin privileges required.");
+                    continue;
+                }
+
                 let _rule_map = add_rule_interface();
                 if !_rule_map.1 { break; }
                 let level = _rule_map.0.0.get("level").unwrap().to_string();
@@ -199,6 +214,11 @@ fn rule_menu(file_mutexes: &FileMutexes, rule_file: &String) {
                 pause!();
             }
             "3" => {
+                if !session_status.is_admin {
+                    println!("Admin privileges required.");
+                    continue;
+                }
+
                 println!("What type of rule you want to delete? (net/host)");
                 let rule_level = get_user_choice();
                 if rule_level != "net" && rule_level != "host" {
@@ -314,27 +334,6 @@ fn add_rule_interface() -> ((HashMap<String, String>, HashMap<String, String>), 
             }
         }
     }
-
-    // let mut count: u32 = 0;
-    // let mut cycle_flag = false;
-
-    // while !cycle_flag {
-    //     println!("Enter count of optional fields (0 if none): ");
-    //     match get_user_choice().parse::<u32>() {
-    //         Ok(number) => { count = number; cycle_flag = true; },
-    //         Err(_e) => { println!("Error parsing number. Try again"); }
-    //     }
-    // }
-
-    // if count > 0 {
-    //     for i in 0..count {
-    //         println!("{}. Enter field name: ", i+1);
-    //         let fname = get_user_choice();
-    //         println!("{}. Enter field value: ", i+1);
-    //         let fvalue = get_user_choice();
-    //         optional_fields_map.insert(fname.to_string(), fvalue.to_string());
-    //     }
-    // }
 
     ((basic_fields, optional_fields_map), true)
 }

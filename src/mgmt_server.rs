@@ -56,6 +56,7 @@ async fn main() {
 
     // Временное выключение аутентификации на этапе разработки
     let username = "admin".to_string();
+    let is_admin = true;
     // let username;
     // let input_username = matches.get_one::<String>("user").unwrap();
     // let input_password = matches.get_one::<String>("password").unwrap();
@@ -78,7 +79,7 @@ async fn main() {
     };
 
     // to settings
-    let print_state = true;
+    let print_state = false;
 
     let listener;
 
@@ -100,6 +101,7 @@ async fn main() {
             let current_session: &mut SessionStatus = &mut SessionStatus {
                     host: HOSTNAME.to_string(),
                     user: username,
+                    is_admin: is_admin,
                     sensor_list: sensors_mutex
                 };
             
