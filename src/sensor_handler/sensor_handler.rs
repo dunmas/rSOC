@@ -25,7 +25,7 @@ pub fn get_sensor_list(session_status: &mut SessionStatus) {
     println!("---------------------------------------------------------------------------------------------");
 }
 
-pub fn change_sensor_state(sensor_ip: &String, session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String) -> (bool, bool, bool) {
+pub fn change_sensor_state(sensor_ip: &String, session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String, audit_status: bool) -> (bool, bool, bool) {
     let mut sensors_map = session_status.sensor_list.lock().unwrap();
 
     for (ip, info) in sensors_map.iter_mut() {
@@ -33,9 +33,9 @@ pub fn change_sensor_state(sensor_ip: &String, session_status: &mut SessionStatu
             info.3 = !info.3;
 
             if info.3 {
-                return (true, write_audit_event(SystemTime::now(), (*info.1).to_string(), (*session_status.user).to_string(), AuditEventType::SenEnable, "Event logging enabled".to_string(), file_mutexes, log_file), true)
+                return (true, write_audit_event(SystemTime::now(), (*info.1).to_string(), (*session_status.user).to_string(), AuditEventType::SenEnable, "Event logging enabled".to_string(), file_mutexes, log_file, audit_status), true)
             } else {
-                return (false, write_audit_event(SystemTime::now(), (*info.1).to_string(), (*session_status.user).to_string(), AuditEventType::SenDisable, "Event logging disabled".to_string(), file_mutexes, log_file), true)
+                return (false, write_audit_event(SystemTime::now(), (*info.1).to_string(), (*session_status.user).to_string(), AuditEventType::SenDisable, "Event logging disabled".to_string(), file_mutexes, log_file, audit_status), true)
             }
         }
     }

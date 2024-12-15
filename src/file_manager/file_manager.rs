@@ -102,7 +102,9 @@ pub mod audit_handler {
         }
     }
 
-    pub fn write_audit_event(timestamp: SystemTime, host: String, user: String, event_type: AuditEventType, message: String, file_mutexes: &FileMutexes, log_file: &String) -> bool {
+    pub fn write_audit_event(timestamp: SystemTime, host: String, user: String, event_type: AuditEventType, message: String, file_mutexes: &FileMutexes, log_file: &String, audit_status: bool) -> bool {
+        if !audit_status { return false }
+        
         let mut audit_file = file_mutexes.audit_mutex.lock().unwrap();
         let time_string: DateTime<Local> = timestamp.into();
         let params_list = vec![time_string.format("%d-%m-%Y %H:%M:%S").to_string(),
@@ -129,13 +131,14 @@ pub mod audit_handler {
         result
     }
 
-    pub fn change_audit_status(audit_status: &mut bool, host: String, user: String, file_mutexes: &FileMutexes, log_file: &String) -> (bool, bool) {
-        *audit_status = !*audit_status;
+    pub fn change_audit_status(audit_status: &Arc<Mutex<bool>>, host: String, user: String, file_mutexes: &FileMutexes, log_file: &String) -> (bool, bool) {
+        let mut audit_stat = audit_status.lock().unwrap();
+        *audit_stat = !*audit_stat;
 
-        if *audit_status {
-            (true, write_audit_event(SystemTime::now(), host, user, AuditEventType::AudEnable, "Audit enabled".to_string(), file_mutexes, log_file))
+        if *audit_stat {
+            (true, write_audit_event(SystemTime::now(), host, user, AuditEventType::AudEnable, "Audit enabled".to_string(), file_mutexes, log_file, true))
         } else {
-            (false, write_audit_event(SystemTime::now(), host, user, AuditEventType::AudDisable, "Audit disabled".to_string(), file_mutexes, log_file))
+            (false, write_audit_event(SystemTime::now(), host, user, AuditEventType::AudDisable, "Audit disabled".to_string(), file_mutexes, log_file, true))
         }
     }
 

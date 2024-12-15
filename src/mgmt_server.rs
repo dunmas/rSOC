@@ -6,10 +6,12 @@ mod auth;
 
 // Network Communication
 use std::io::{self, Read, Write};
+use std::ops::DerefMut;
 use std::thread;
 use tokio::sync::mpsc;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::spawn;
+use tokio_tungstenite::tungstenite::ClientRequestBuilder;
 use std::time::SystemTime;
 
 use clap::{Arg, Command};
@@ -87,6 +89,9 @@ async fn main() {
     
     println!("Start listening on {} port", LPORT);
     let (tx, mut rx) = mpsc::channel::<String>(32);
+  
+    let audit_status:Arc<Mutex<bool>> = Arc::new(Mutex::new(true));
+    let audit_status_clone = Arc::clone(&audit_status);
 
     // console interface
     {
@@ -95,11 +100,10 @@ async fn main() {
             let current_session: &mut SessionStatus = &mut SessionStatus {
                     host: HOSTNAME.to_string(),
                     user: username,
-                    audit_status: true,
                     sensor_list: sensors_mutex
                 };
             
-                main_menu(current_session, &log_files, tx_clone, &file_mutexes).await;
+            main_menu(current_session, &log_files, tx_clone, &file_mutexes, &audit_status).await;
         });
     }
 
@@ -139,7 +143,9 @@ async fn main() {
                     // parced_cmd[1] - name of client, parced_cmd[2] - client type, parced_cmd[3] - client user
                     let init_vec: Vec<&str> = cmd.split("[:1:]").collect();
                     let event_type = if init_vec[2] == "net" { AuditEventType::NetSenConn } else { AuditEventType::HostSenConn };
-                    write_audit_event(SystemTime::now(), init_vec[1].to_string(), init_vec[3].to_string(), event_type, "Sensor connected. Type - ".to_string() + init_vec[2], &file_mutexes_clone, &AUDIT_LOG.to_string());
+                    
+                    let aud_stat = audit_status_clone.lock().unwrap();
+                    write_audit_event(SystemTime::now(), init_vec[1].to_string(), init_vec[3].to_string(), event_type, "Sensor connected. Type - ".to_string() + init_vec[2], &file_mutexes_clone, &AUDIT_LOG.to_string(), *aud_stat);
                 }
                 
                 Some(ref cmd) if cmd.starts_with("event") => {

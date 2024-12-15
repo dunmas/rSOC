@@ -8,6 +8,7 @@ use crate::structs::soc_structs::{SessionStatus, LogFiles};
 use crate::file_manager::file_manager::event_handler::get_10_latest_event_messages;
 use crate::sensor_handler::rule_handler::{get_rules_list, add_rule, delete_rule};
 use crate::sensor_handler::sensor_handler::{get_sensor_list, change_sensor_state};
+use std::sync::{Arc, Mutex};
 
 const MAIN_MENU: &str = "\
         ------------------------------------------------------\n\
@@ -64,15 +65,15 @@ macro_rules! pause {
     }};
 }
 
-pub async fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles, tx: tokio::sync::mpsc::Sender<String>, file_mutexes: &FileMutexes) {
+pub async fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles, tx: tokio::sync::mpsc::Sender<String>, file_mutexes: &FileMutexes, audit_status: &Arc<Mutex<bool>>) {
     loop {
         println!("{}", MAIN_MENU);
         let choise = get_user_choice();
 
         match choise.as_str() {
             "1" => event_menu(&file_mutexes),
-            "2" => sensors_menu(session_status, &file_mutexes, &log_files.audit_file),
-            "3" => audit_menu(session_status, &file_mutexes, &log_files.audit_file),
+            "2" => sensors_menu(session_status, &file_mutexes, &log_files.audit_file, audit_status),
+            "3" => audit_menu(session_status, &file_mutexes, &log_files.audit_file, audit_status),
             "4" => rule_menu(&file_mutexes, &log_files.rules_file),
             "5" => {
                 println!("Goodbye.");
@@ -113,7 +114,7 @@ fn event_menu(file_mutexes: &FileMutexes) {
     }
 }
 
-fn sensors_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String) {
+fn sensors_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String, audit_status: &Arc<Mutex<bool>>) {
     loop {
         println!("{}", SENSORS_MENU);
         let choise = get_user_choice();
@@ -128,7 +129,8 @@ fn sensors_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, 
                 println!("Enter address of sensor to change it's status:");
                 let sensor_ip = &get_user_choice();
 
-                let operation_status: (bool, bool, bool) = change_sensor_state(sensor_ip, session_status, file_mutexes, log_file);
+                let aud_stat = audit_status.lock().unwrap();
+                let operation_status: (bool, bool, bool) = change_sensor_state(sensor_ip, session_status, file_mutexes, log_file, *aud_stat);
                 if !operation_status.2 { println!("There is no sensor with this IP."); break; }
                 if !operation_status.1 { println!("Error occured with audit logging."); break; }
                 if !operation_status.0 { println!("System audit disabled")} else {println!("System audit enabled")};
@@ -140,14 +142,14 @@ fn sensors_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, 
     }
 }
 
-fn audit_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String) {
+fn audit_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String, audit_status: &Arc<Mutex<bool>>) {
     loop {
         println!("{}", AUDIT_MENU);
         let choise = get_user_choice();
 
         match choise.as_str() {
             "1" => {
-                let operation_status: (bool, bool) = change_audit_status(&mut session_status.audit_status, session_status.host.clone(), session_status.user.clone(), file_mutexes, log_file);
+                let operation_status: (bool, bool) = change_audit_status(audit_status, session_status.host.clone(), session_status.user.clone(), file_mutexes, log_file);
                 if !operation_status.1 {println!("Error occured with audit logging."); break;}
                 if !operation_status.0 {println!("System audit disabled")} else {println!("System audit enabled")};
                 pause!();

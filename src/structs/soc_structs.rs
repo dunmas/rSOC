@@ -6,7 +6,6 @@ use std::sync::{Arc, Mutex};
 pub struct SessionStatus {
     pub host: String,
     pub user: String,
-    pub audit_status: bool,
     pub sensor_list: Arc<Mutex<HashMap<String, (mpsc::Sender<String>, String, String, bool)>>>,
 }
 
