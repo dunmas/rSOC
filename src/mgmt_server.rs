@@ -134,10 +134,14 @@ async fn main() {
                     break;
                 },
                 Some(ref cmd) if cmd.starts_with("cl_disc") => {
-                    // parced_cmd[1] - address of client, parced_cmd[2] - name of client, parced_cmd[3] - level of client
+                    // parced_cmd[1] - address of client, parced_cmd[2] - name of client, parced_cmd[3] - level of client, parced_cmd[4] - client username
                     let parced_cmd: Vec<&str> = cmd.split("[:1:]").collect();
                     sensors_mutex_clone_for_rx.lock().unwrap().remove(parced_cmd[1]);
                     println!("Client disconnected: {} ({})", parced_cmd[1].to_string(), parced_cmd[2].to_string());
+                    let event_type = if parced_cmd[3] == "net" { AuditEventType::NetSenDisconn } else { AuditEventType::HostSenDisconn };
+
+                    let aud_stat = audit_status_clone.lock().unwrap();
+                    write_audit_event(SystemTime::now(), parced_cmd[2].to_string(), parced_cmd[4].to_string(), event_type, "Sensor disconnected. Type - ".to_string() + parced_cmd[3], &file_mutexes_clone, &AUDIT_LOG.to_string(), *aud_stat);
                 }
                 Some(ref cmd) if cmd.starts_with("init") => {
                     // parced_cmd[1] - name of client, parced_cmd[2] - client type, parced_cmd[3] - client user

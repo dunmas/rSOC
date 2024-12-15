@@ -84,7 +84,7 @@ pub async fn handle_client<'a>(mut stream: TcpStream, addr_str: String, mut clie
             // data stream from sensor
             result = stream.read(&mut buffer) => match result {
                 Ok(n) if n == 0 => {
-                    server_tx.send("cl_disc[:1:]".to_string() + &addr_str + "[:1:]" + &init_vec[0]).await.unwrap();
+                    server_tx.send("cl_disc[:1:]".to_string() + &addr_str + "[:1:]" + &init_vec[0] + "[:1:]" + &init_vec[1] + "[:1:]" + &init_vec[2]).await.unwrap();
                     break;
                 },
                 Ok(n) => {
