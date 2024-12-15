@@ -34,7 +34,6 @@ const EVENT_LOG: &str = "events.txt";
 const RULES_FILE: &str = "rules.txt";
 const HOSTNAME: &str = "MAMA-1 | Control centre";
 const LPORT: &str = "7777";
-const TIMEZONE: &str = "3";
 
 #[tokio::main]
 async fn main() {
