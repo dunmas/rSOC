@@ -1,31 +1,25 @@
-use std::net::TcpStream;
-use std::io::{Read, Write};
-use crate::menu::menu::get_user_choice;
+mod auth;
+mod file_manager;
+mod menu;
+mod sensor_handler;
+mod structs;
+
+use chrono::offset::Local;
+use chrono::DateTime;
 use clap::{Arg, Command};
-use tokio::time::{sleep, Duration};
 use std::fs::OpenOptions;
-use crate::sensor_handler::rule_handler::get_rules_map;
+use std::io::{Read, Write};
+use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
-use chrono::DateTime;
-use chrono::offset::Local;
-
-// traffic sniffer
+use tokio::time::{sleep, Duration};
 use pnet::datalink::{self, Channel::Ethernet};
-use pnet::packet::ethernet::{EthernetPacket, EtherTypes};
+use pnet::packet::ethernet::{EtherTypes, EthernetPacket};
 
-mod menu;
-mod file_manager;
-mod structs;
-mod sensor_handler;
-mod auth;
+use crate::menu::menu::get_user_choice;
+use crate::sensor_handler::rule_handler::get_rules_map;
 
 const CONFIG: &str = "net_sensor_config.txt";
-// const SENSOR_NAME: &str = "Zarya-1";
-// const USERNAME: &str = "net_admin";
-// const LEVEL: &str = "net";
-// const RULES_FILE: &str = "net_rules.txt";
-// const LISTEN_INTERFACE: &str = "eth0";
 
 #[tokio::main]
 async fn main() {
@@ -49,10 +43,11 @@ async fn main() {
     {
         let mut conf_file = OpenOptions::new()
             .read(true) // Позволяем чтение
-            .open(CONFIG).unwrap();
+            .open(CONFIG)
+            .unwrap();
         let buf: &mut String = &mut "".to_owned();
 
-        match (conf_file).read_to_string(buf){
+        match (conf_file).read_to_string(buf) {
             Ok(_) => {
                 let strings = buf.split("\n");
 
@@ -79,18 +74,25 @@ async fn main() {
                         }
                     }
                 }
-            },
-            Err(e) => { println!("{}", e);}
+            }
+            Err(e) => {
+                println!("{}", e);
+            }
         }
     }
 
-    
     let interfaces = datalink::interfaces();
     let interface;
 
-    match interfaces.into_iter().find(|iface| iface.name == listen_interface) {
-        Some(res) => { interface = res },
-        _ => { println!("Can't find such interface. Check sensor settings."); return; }
+    match interfaces
+        .into_iter()
+        .find(|iface| iface.name == listen_interface)
+    {
+        Some(res) => interface = res,
+        _ => {
+            println!("Can't find such interface. Check sensor settings.");
+            return;
+        }
     }
 
     println!("Enter address (IP:port) of management server:");
@@ -108,34 +110,42 @@ async fn main() {
                 stream.write(b"update").unwrap();
                 let size = stream.read(&mut buffer).unwrap();
                 match size {
-                    0 => { println!("Server disconnected. Stop working..."); },
+                    0 => {
+                        println!("Server disconnected. Stop working...");
+                    }
                     _ => {
                         let mut rules_file = OpenOptions::new()
-                        .write(true)
-                        .truncate(true)
-                        .create(true)
-                        .read(true)
-                        .open(rules_file)
-                        .unwrap();
+                            .write(true)
+                            .truncate(true)
+                            .create(true)
+                            .read(true)
+                            .open(rules_file)
+                            .unwrap();
 
                         match write!(rules_file, "{}", String::from_utf8_lossy(&buffer[..size])) {
-                            Ok(_) => { println!("Rules updated succesfully!") },
-                            Err(e) => { println!("Error while writing to rule file: {}", e) }
+                            Ok(_) => {
+                                println!("Rules updated succesfully!")
+                            }
+                            Err(e) => {
+                                println!("Error while writing to rule file: {}", e)
+                            }
                         };
 
                         return;
                     }
                 }
             }
-            
-            let rules_mutex = Arc::new(Mutex::new(OpenOptions::new()
-            .append(true)
-            .create(true)
-            .read(true)
-            .open(rules_file)
-            .unwrap()));
-                       
-            if let Some(_) =  get_rules_map(&rules_mutex).get(level.as_str()) {
+
+            let rules_mutex = Arc::new(Mutex::new(
+                OpenOptions::new()
+                    .append(true)
+                    .create(true)
+                    .read(true)
+                    .open(rules_file)
+                    .unwrap(),
+            ));
+
+            if let Some(_) = get_rules_map(&rules_mutex).get(level.as_str()) {
                 // rules_vec = data_vec;
             } else {
                 println!("Error with parcing rules. Check rules file.");
@@ -148,7 +158,10 @@ async fn main() {
             // Packet tracer channel
             let (_tx, mut rx) = match datalink::channel(&interface, Default::default()) {
                 Ok(Ethernet(tx, rx)) => (tx, rx),
-                _ => { println!("Failed to create channel"); return; },
+                _ => {
+                    println!("Failed to create channel");
+                    return;
+                }
             };
 
             loop {
@@ -159,61 +172,143 @@ async fn main() {
                         if ethernet_packet.get_ethertype() == EtherTypes::Ipv4 {
                             for rule in rules_vec {
                                 for pairs_vector in rule {
-                                    if let Some((_key, _value)) = pairs_vector.1.iter().find(|(k, v)| *v == ethernet_packet.get_source().to_string() && k == "src") {
-                                        if pairs_vector.1.iter().any(|(first, second)| first == "dst" && second != " ") {
-                                            if let Some((_key, _value)) = pairs_vector.1.iter().find(|(k, v)| *v == ethernet_packet.get_destination().to_string() && k == "dst") {
-                                                let timestamp: DateTime<Local> = SystemTime::now().into();
-                                                let cmd_string = "event".to_string() + "[:3:]" + &pairs_vector.0 + "[:3:]" + &timestamp.timestamp().to_string();
+                                    if let Some((_key, _value)) =
+                                        pairs_vector.1.iter().find(|(k, v)| {
+                                            *v == ethernet_packet.get_source().to_string()
+                                                && k == "src"
+                                        })
+                                    {
+                                        if pairs_vector
+                                            .1
+                                            .iter()
+                                            .any(|(first, second)| first == "dst" && second != " ")
+                                        {
+                                            if let Some((_key, _value)) =
+                                                pairs_vector.1.iter().find(|(k, v)| {
+                                                    *v == ethernet_packet
+                                                        .get_destination()
+                                                        .to_string()
+                                                        && k == "dst"
+                                                })
+                                            {
+                                                let timestamp: DateTime<Local> =
+                                                    SystemTime::now().into();
+                                                let cmd_string = "event".to_string()
+                                                    + "[:3:]"
+                                                    + &pairs_vector.0
+                                                    + "[:3:]"
+                                                    + &timestamp.timestamp().to_string();
                                                 let cmd_string_byte_fmt = cmd_string.as_bytes();
                                                 match stream.write(cmd_string_byte_fmt) {
-                                                    Ok(_) => {},
-                                                    Err(_) => { println!("Troubles with connection. Stop working..."); return; }
+                                                    Ok(_) => {}
+                                                    Err(_) => {
+                                                        println!("Troubles with connection. Stop working...");
+                                                        return;
+                                                    }
                                                 }
-                                                println!("Catch event! Rule hash: {} | Time: {}", pairs_vector.0, timestamp.format("%d-%m-%Y %H:%M:%S"));
+                                                println!(
+                                                    "Catch event! Rule hash: {} | Time: {}",
+                                                    pairs_vector.0,
+                                                    timestamp.format("%d-%m-%Y %H:%M:%S")
+                                                );
                                             }
                                             continue;
                                         } else {
-                                            let timestamp: DateTime<Local> = SystemTime::now().into();
-                                            let cmd_string = "event".to_string() + "[:3:]" + &pairs_vector.0 + "[:3:]" + &timestamp.timestamp().to_string();
+                                            let timestamp: DateTime<Local> =
+                                                SystemTime::now().into();
+                                            let cmd_string = "event".to_string()
+                                                + "[:3:]"
+                                                + &pairs_vector.0
+                                                + "[:3:]"
+                                                + &timestamp.timestamp().to_string();
                                             let cmd_string_byte_fmt = cmd_string.as_bytes();
                                             match stream.write(cmd_string_byte_fmt) {
-                                                Ok(_) => {},
-                                                Err(_) => { println!("Troubles with connection. Stop working..."); return; }
+                                                Ok(_) => {}
+                                                Err(_) => {
+                                                    println!(
+                                                        "Troubles with connection. Stop working..."
+                                                    );
+                                                    return;
+                                                }
                                             }
-                                            println!("Catch event! Rule hash: {} | Time: {}", pairs_vector.0, timestamp.format("%d-%m-%Y %H:%M:%S"));
+                                            println!(
+                                                "Catch event! Rule hash: {} | Time: {}",
+                                                pairs_vector.0,
+                                                timestamp.format("%d-%m-%Y %H:%M:%S")
+                                            );
                                             continue;
                                         }
-                                    } 
+                                    }
 
-                                    if let Some((_key, _value)) = pairs_vector.1.iter().find(|(k, v)| *v == ethernet_packet.get_destination().to_string() && k == "dst") {
-                                        if pairs_vector.1.iter().any(|(first, second)| first == "src" && second != " ") {
-                                            if let Some((_key, _value)) = pairs_vector.1.iter().find(|(k, v)| *v == ethernet_packet.get_source().to_string() && k == "src") {
-                                                let timestamp: DateTime<Local> = SystemTime::now().into();
-                                                let cmd_string = "event".to_string() + "[:3:]" + &pairs_vector.0 + "[:3:]" + &timestamp.timestamp().to_string();
+                                    if let Some((_key, _value)) =
+                                        pairs_vector.1.iter().find(|(k, v)| {
+                                            *v == ethernet_packet.get_destination().to_string()
+                                                && k == "dst"
+                                        })
+                                    {
+                                        if pairs_vector
+                                            .1
+                                            .iter()
+                                            .any(|(first, second)| first == "src" && second != " ")
+                                        {
+                                            if let Some((_key, _value)) =
+                                                pairs_vector.1.iter().find(|(k, v)| {
+                                                    *v == ethernet_packet.get_source().to_string()
+                                                        && k == "src"
+                                                })
+                                            {
+                                                let timestamp: DateTime<Local> =
+                                                    SystemTime::now().into();
+                                                let cmd_string = "event".to_string()
+                                                    + "[:3:]"
+                                                    + &pairs_vector.0
+                                                    + "[:3:]"
+                                                    + &timestamp.timestamp().to_string();
                                                 let cmd_string_byte_fmt = cmd_string.as_bytes();
                                                 match stream.write(cmd_string_byte_fmt) {
-                                                    Ok(_) => {},
-                                                    Err(_) => { println!("Troubles with connection. Stop working..."); return; }
+                                                    Ok(_) => {}
+                                                    Err(_) => {
+                                                        println!("Troubles with connection. Stop working...");
+                                                        return;
+                                                    }
                                                 }
-                                                println!("Catch event! Rule hash: {} | Time: {}", pairs_vector.0, timestamp.format("%d-%m-%Y %H:%M:%S"));
+                                                println!(
+                                                    "Catch event! Rule hash: {} | Time: {}",
+                                                    pairs_vector.0,
+                                                    timestamp.format("%d-%m-%Y %H:%M:%S")
+                                                );
                                             }
                                             continue;
                                         } else {
-                                            let timestamp: DateTime<Local> = SystemTime::now().into();
-                                            let cmd_string = "event".to_string() + "[:3:]" + &pairs_vector.0 + "[:3:]" + &timestamp.timestamp().to_string();
+                                            let timestamp: DateTime<Local> =
+                                                SystemTime::now().into();
+                                            let cmd_string = "event".to_string()
+                                                + "[:3:]"
+                                                + &pairs_vector.0
+                                                + "[:3:]"
+                                                + &timestamp.timestamp().to_string();
                                             let cmd_string_byte_fmt = cmd_string.as_bytes();
                                             match stream.write(cmd_string_byte_fmt) {
-                                                Ok(_) => {},
-                                                Err(_) => { println!("Troubles with connection. Stop working..."); return; }
+                                                Ok(_) => {}
+                                                Err(_) => {
+                                                    println!(
+                                                        "Troubles with connection. Stop working..."
+                                                    );
+                                                    return;
+                                                }
                                             }
-                                            println!("Catch event! Rule hash: {} | Time: {}", pairs_vector.0, timestamp.format("%d-%m-%Y %H:%M:%S"));
+                                            println!(
+                                                "Catch event! Rule hash: {} | Time: {}",
+                                                pairs_vector.0,
+                                                timestamp.format("%d-%m-%Y %H:%M:%S")
+                                            );
                                             continue;
                                         }
-                                    } 
+                                    }
                                 }
                             }
                         }
-                    },
+                    }
                     Err(e) => {
                         eprintln!("Error receiving packet: {}", e);
                     }

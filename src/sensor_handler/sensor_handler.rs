@@ -1,14 +1,17 @@
-use std::io::{self, BufRead};
-use std::time::SystemTime;
-use std::fs::{self, File};
-use regex::Regex;
-use tokio::{io::{AsyncReadExt, AsyncWriteExt}, net::TcpStream};
-use tokio::sync::mpsc;
-use crate::structs::soc_structs::{SessionStatus, AuditEventType};
-use crate::structs::soc_structs::multithread::FileMutexes;
 use crate::file_manager::file_manager::audit_handler::write_audit_event;
-use std::sync::{Arc, Mutex};
+use crate::structs::soc_structs::multithread::FileMutexes;
+use crate::structs::soc_structs::{AuditEventType, SessionStatus};
+use regex::Regex;
 use std::collections::HashMap;
+use std::fs::{self, File};
+use std::io::{self, BufRead};
+use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
+use tokio::sync::mpsc;
+use tokio::{
+    io::{AsyncReadExt, AsyncWriteExt},
+    net::TcpStream,
+};
 
 pub fn get_sensor_list(session_status: &mut SessionStatus) {
     let sensors_map = session_status.sensor_list.lock().unwrap();
@@ -17,15 +20,26 @@ pub fn get_sensor_list(session_status: &mut SessionStatus) {
              -----------------------------------------------------------------------------------------------");
 
     for (ip, info) in sensors_map.iter() {
-        let status = if info.3 == true { "capturing" } else { "stopped" };
-        let output_string = "|| ".to_string() + ip + " || " + &info.1 + " || " + &info.2 + " || " + status + " ||";
+        let status = if info.3 == true {
+            "capturing"
+        } else {
+            "stopped"
+        };
+        let output_string =
+            "|| ".to_string() + ip + " || " + &info.1 + " || " + &info.2 + " || " + status + " ||";
         println!("{}", output_string);
     }
 
     println!("---------------------------------------------------------------------------------------------");
 }
 
-pub fn change_sensor_state(sensor_ip: &String, session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String, audit_status: bool) -> (bool, bool, bool) {
+pub fn change_sensor_state(
+    sensor_ip: &String,
+    session_status: &mut SessionStatus,
+    file_mutexes: &FileMutexes,
+    log_file: &String,
+    audit_status: bool,
+) -> (bool, bool, bool) {
     let mut sensors_map = session_status.sensor_list.lock().unwrap();
 
     for (ip, info) in sensors_map.iter_mut() {
@@ -33,9 +47,35 @@ pub fn change_sensor_state(sensor_ip: &String, session_status: &mut SessionStatu
             info.3 = !info.3;
 
             if info.3 {
-                return (true, write_audit_event(SystemTime::now(), (*info.1).to_string(), (*session_status.user).to_string(), AuditEventType::SenEnable, "Event logging enabled".to_string(), file_mutexes, log_file, audit_status), true)
+                return (
+                    true,
+                    write_audit_event(
+                        SystemTime::now(),
+                        (*info.1).to_string(),
+                        (*session_status.user).to_string(),
+                        AuditEventType::SenEnable,
+                        "Event logging enabled".to_string(),
+                        file_mutexes,
+                        log_file,
+                        audit_status,
+                    ),
+                    true,
+                );
             } else {
-                return (false, write_audit_event(SystemTime::now(), (*info.1).to_string(), (*session_status.user).to_string(), AuditEventType::SenDisable, "Event logging disabled".to_string(), file_mutexes, log_file, audit_status), true)
+                return (
+                    false,
+                    write_audit_event(
+                        SystemTime::now(),
+                        (*info.1).to_string(),
+                        (*session_status.user).to_string(),
+                        AuditEventType::SenDisable,
+                        "Event logging disabled".to_string(),
+                        file_mutexes,
+                        log_file,
+                        audit_status,
+                    ),
+                    true,
+                );
             }
         }
     }
@@ -50,18 +90,26 @@ fn get_rules_string_by_level(level: String, rule_file: &String) -> String {
     let pattern = Regex::new(format!(r"level\[:1:\]{}\[:2:\]", level).as_str()).unwrap();
 
     for line in reader.lines() {
-                if let Ok(l) = line {
-                    if pattern.is_match(&l) {
-                        tx_string.push_str(&l);
-                        tx_string.push('\n');
-                    }
-                }
+        if let Ok(l) = line {
+            if pattern.is_match(&l) {
+                tx_string.push_str(&l);
+                tx_string.push('\n');
+            }
+        }
     }
 
     tx_string
 }
 
-pub async fn handle_client<'a>(mut stream: TcpStream, addr_str: String, mut client_rx: mpsc::Receiver<String>, rule_file: &String, sensors_mutex_clone: Arc<Mutex<HashMap<String, (mpsc::Sender<String>, String, String, bool)>>>, client_tx: mpsc::Sender<String>, server_tx: mpsc::Sender<String>) -> io::Result<()> {
+pub async fn handle_client<'a>(
+    mut stream: TcpStream,
+    addr_str: String,
+    mut client_rx: mpsc::Receiver<String>,
+    rule_file: &String,
+    sensors_mutex_clone: Arc<Mutex<HashMap<String, (mpsc::Sender<String>, String, String, bool)>>>,
+    client_tx: mpsc::Sender<String>,
+    server_tx: mpsc::Sender<String>,
+) -> io::Result<()> {
     let mut init_buffer = [0; 1024];
 
     // Init string from client
@@ -69,14 +117,28 @@ pub async fn handle_client<'a>(mut stream: TcpStream, addr_str: String, mut clie
     if n == 0 {
         return Ok(());
     }
-    
+
     let raw_init_string = String::from_utf8_lossy(&init_buffer[..n]);
     // init_vec[0] - sensor_name, 1 - sensor_level, 2 - sensor user
     let init_vec: Vec<&str> = raw_init_string.split("[:1:]").collect();
-    sensors_mutex_clone.lock().unwrap().insert(addr_str.clone(), (client_tx, init_vec[0].to_string(), init_vec[1].to_string(), true));
+    sensors_mutex_clone.lock().unwrap().insert(
+        addr_str.clone(),
+        (
+            client_tx,
+            init_vec[0].to_string(),
+            init_vec[1].to_string(),
+            true,
+        ),
+    );
 
-    println!("Client connected! IP: {}, Name: {}, Level: {}, User: {}", addr_str, init_vec[0], init_vec[1], init_vec[2]);
-    server_tx.send("init[:1:]".to_string() + &raw_init_string).await.unwrap();
+    println!(
+        "Client connected! IP: {}, Name: {}, Level: {}, User: {}",
+        addr_str, init_vec[0], init_vec[1], init_vec[2]
+    );
+    server_tx
+        .send("init[:1:]".to_string() + &raw_init_string)
+        .await
+        .unwrap();
 
     let mut buffer = [0; 1024];
     loop {

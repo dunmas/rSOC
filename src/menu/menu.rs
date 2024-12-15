@@ -1,15 +1,16 @@
-use std::io::{self, Write};
-use std::collections::HashMap;
-use std::os::linux::net;
-use std::time::SystemTime;
-use regex::Regex;
-use crate::file_manager::file_manager::audit_handler::{change_audit_status, prepare_file_mutexes, get_10_latest_audit_messages, write_audit_event};
+use crate::file_manager::file_manager::audit_handler::{
+    change_audit_status, get_10_latest_audit_messages, write_audit_event,
+};
+use crate::file_manager::file_manager::event_handler::get_10_latest_event_messages;
+use crate::sensor_handler::rule_handler::{add_rule, delete_rule, get_rules_list};
+use crate::sensor_handler::sensor_handler::{change_sensor_state, get_sensor_list};
 use crate::structs::soc_structs::multithread::FileMutexes;
 use crate::structs::soc_structs::{AuditEventType, LogFiles, SessionStatus};
-use crate::file_manager::file_manager::event_handler::get_10_latest_event_messages;
-use crate::sensor_handler::rule_handler::{get_rules_list, add_rule, delete_rule};
-use crate::sensor_handler::sensor_handler::{get_sensor_list, change_sensor_state};
+use regex::Regex;
+use std::collections::HashMap;
+use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
 
 const MAIN_MENU: &str = "\
         ------------------------------------------------------\n\
@@ -66,15 +67,36 @@ macro_rules! pause {
     }};
 }
 
-pub async fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles, tx: tokio::sync::mpsc::Sender<String>, file_mutexes: &FileMutexes, audit_status: &Arc<Mutex<bool>>) {
+pub async fn main_menu(
+    session_status: &mut SessionStatus,
+    log_files: &LogFiles,
+    tx: tokio::sync::mpsc::Sender<String>,
+    file_mutexes: &FileMutexes,
+    audit_status: &Arc<Mutex<bool>>,
+) {
     loop {
         println!("{}", MAIN_MENU);
         let choise = get_user_choice();
 
         match choise.as_str() {
-            "1" => event_menu(session_status, &file_mutexes, &log_files.audit_file, audit_status),
-            "2" => sensors_menu(session_status, &file_mutexes, &log_files.audit_file, audit_status),
-            "3" => audit_menu(session_status, &file_mutexes, &log_files.audit_file, audit_status),
+            "1" => event_menu(
+                session_status,
+                &file_mutexes,
+                &log_files.audit_file,
+                audit_status,
+            ),
+            "2" => sensors_menu(
+                session_status,
+                &file_mutexes,
+                &log_files.audit_file,
+                audit_status,
+            ),
+            "3" => audit_menu(
+                session_status,
+                &file_mutexes,
+                &log_files.audit_file,
+                audit_status,
+            ),
             "4" => rule_menu(session_status, &file_mutexes, &log_files.rules_file),
             "5" => {
                 println!("Goodbye.");
@@ -93,24 +115,47 @@ pub fn get_user_choice() -> String {
     choice.trim().to_string()
 }
 
-fn event_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String, audit_status: &Arc<Mutex<bool>>) {
+fn event_menu(
+    session_status: &mut SessionStatus,
+    file_mutexes: &FileMutexes,
+    log_file: &String,
+    audit_status: &Arc<Mutex<bool>>,
+) {
     loop {
         println!("{}", EVENT_MENU);
         let choise = get_user_choice();
 
         match choise.as_str() {
             "1" => {
-                get_10_latest_event_messages(file_mutexes,"");
+                get_10_latest_event_messages(file_mutexes, "");
                 let aud_status = audit_status.lock().unwrap();
-                write_audit_event(SystemTime::now(), session_status.host.clone(), session_status.user.clone(), AuditEventType::EvtLogAccess, "Event log has been checked".to_string(), file_mutexes, log_file, *aud_status);
+                write_audit_event(
+                    SystemTime::now(),
+                    session_status.host.clone(),
+                    session_status.user.clone(),
+                    AuditEventType::EvtLogAccess,
+                    "Event log has been checked".to_string(),
+                    file_mutexes,
+                    log_file,
+                    *aud_status,
+                );
                 pause!();
             }
             "2" => {
                 println!("Please, enter name of the sensor:");
                 let required_sensor = get_user_choice();
-                get_10_latest_event_messages(file_mutexes,&required_sensor);
+                get_10_latest_event_messages(file_mutexes, &required_sensor);
                 let aud_status = audit_status.lock().unwrap();
-                write_audit_event(SystemTime::now(), session_status.host.clone(), session_status.user.clone(), AuditEventType::EvtLogAccess, "Event log has been checked".to_string(), file_mutexes, log_file, *aud_status);
+                write_audit_event(
+                    SystemTime::now(),
+                    session_status.host.clone(),
+                    session_status.user.clone(),
+                    AuditEventType::EvtLogAccess,
+                    "Event log has been checked".to_string(),
+                    file_mutexes,
+                    log_file,
+                    *aud_status,
+                );
                 pause!();
             }
             "3" => break,
@@ -119,7 +164,12 @@ fn event_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, lo
     }
 }
 
-fn sensors_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String, audit_status: &Arc<Mutex<bool>>) {
+fn sensors_menu(
+    session_status: &mut SessionStatus,
+    file_mutexes: &FileMutexes,
+    log_file: &String,
+    audit_status: &Arc<Mutex<bool>>,
+) {
     loop {
         println!("{}", SENSORS_MENU);
         let choise = get_user_choice();
@@ -140,10 +190,26 @@ fn sensors_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, 
                 let sensor_ip = &get_user_choice();
 
                 let aud_stat = audit_status.lock().unwrap();
-                let operation_status: (bool, bool, bool) = change_sensor_state(sensor_ip, session_status, file_mutexes, log_file, *aud_stat);
-                if !operation_status.2 { println!("There is no sensor with this IP."); break; }
-                if !operation_status.1 { println!("Error occured with audit logging."); break; }
-                if !operation_status.0 { println!("System audit disabled")} else {println!("System audit enabled")};
+                let operation_status: (bool, bool, bool) = change_sensor_state(
+                    sensor_ip,
+                    session_status,
+                    file_mutexes,
+                    log_file,
+                    *aud_stat,
+                );
+                if !operation_status.2 {
+                    println!("There is no sensor with this IP.");
+                    break;
+                }
+                if !operation_status.1 {
+                    println!("Error occured with audit logging.");
+                    break;
+                }
+                if !operation_status.0 {
+                    println!("System audit disabled")
+                } else {
+                    println!("System audit enabled")
+                };
                 pause!();
             }
             "3" => break,
@@ -152,7 +218,12 @@ fn sensors_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, 
     }
 }
 
-fn audit_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String, audit_status: &Arc<Mutex<bool>>) {
+fn audit_menu(
+    session_status: &mut SessionStatus,
+    file_mutexes: &FileMutexes,
+    log_file: &String,
+    audit_status: &Arc<Mutex<bool>>,
+) {
     loop {
         println!("{}", AUDIT_MENU);
         let choise = get_user_choice();
@@ -164,15 +235,37 @@ fn audit_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, lo
                     continue;
                 }
 
-                let operation_status: (bool, bool) = change_audit_status(audit_status, session_status.host.clone(), session_status.user.clone(), file_mutexes, log_file);
-                if !operation_status.1 {println!("Error occured with audit logging."); break;}
-                if !operation_status.0 {println!("System audit disabled")} else {println!("System audit enabled")};
+                let operation_status: (bool, bool) = change_audit_status(
+                    audit_status,
+                    session_status.host.clone(),
+                    session_status.user.clone(),
+                    file_mutexes,
+                    log_file,
+                );
+                if !operation_status.1 {
+                    println!("Error occured with audit logging.");
+                    break;
+                }
+                if !operation_status.0 {
+                    println!("System audit disabled")
+                } else {
+                    println!("System audit enabled")
+                };
                 pause!();
             }
             "2" => {
                 get_10_latest_audit_messages(file_mutexes);
                 let aud_status = audit_status.lock().unwrap();
-                write_audit_event(SystemTime::now(), session_status.host.clone(), session_status.user.clone(), AuditEventType::AudLogAccess, "Audit log has been checked".to_string(), file_mutexes, log_file, *aud_status);
+                write_audit_event(
+                    SystemTime::now(),
+                    session_status.host.clone(),
+                    session_status.user.clone(),
+                    AuditEventType::AudLogAccess,
+                    "Audit log has been checked".to_string(),
+                    file_mutexes,
+                    log_file,
+                    *aud_status,
+                );
                 pause!();
             }
             "3" => break,
@@ -192,9 +285,15 @@ fn rule_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, rul
                 let rule_level = get_user_choice();
 
                 match rule_level.as_str() {
-                    "net" => { get_rules_list("net", file_mutexes); },
-                    "host" => { get_rules_list("host", file_mutexes); },
-                    _ => { println!("Undefined rule level. Try 'net' or 'host'") },
+                    "net" => {
+                        get_rules_list("net", file_mutexes);
+                    }
+                    "host" => {
+                        get_rules_list("host", file_mutexes);
+                    }
+                    _ => {
+                        println!("Undefined rule level. Try 'net' or 'host'")
+                    }
                 }
                 pause!();
             }
@@ -205,19 +304,23 @@ fn rule_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, rul
                 }
 
                 let _rule_map = add_rule_interface();
-                if !_rule_map.1 { break; }
-                let level = _rule_map.0.0.get("level").unwrap().to_string();
-                let name = _rule_map.0.0.get("name").unwrap().to_string();
-                let desc = _rule_map.0.0.get("description").unwrap().to_string();
-                let payload = _rule_map.0.0.get("payload").unwrap().to_string();
-                
-                add_rule(level,
-                         name, 
-                         payload,
-                         desc,
-                         &_rule_map.0.1,
-                         rule_file,
-                                   file_mutexes);
+                if !_rule_map.1 {
+                    break;
+                }
+                let level = _rule_map.0 .0.get("level").unwrap().to_string();
+                let name = _rule_map.0 .0.get("name").unwrap().to_string();
+                let desc = _rule_map.0 .0.get("description").unwrap().to_string();
+                let payload = _rule_map.0 .0.get("payload").unwrap().to_string();
+
+                add_rule(
+                    level,
+                    name,
+                    payload,
+                    desc,
+                    &_rule_map.0 .1,
+                    rule_file,
+                    file_mutexes,
+                );
                 pause!();
             }
             "3" => {
@@ -250,7 +353,9 @@ fn add_rule_interface() -> ((HashMap<String, String>, HashMap<String, String>), 
         ("name".to_string(), "".to_string()),
         ("payload".to_string(), "".to_string()),
         ("description".to_string(), "".to_string()),
-    ].into_iter().collect();
+    ]
+    .into_iter()
+    .collect();
     let mut optional_fields_map: HashMap<String, String> = HashMap::new();
     let level: &str;
 
@@ -260,14 +365,20 @@ fn add_rule_interface() -> ((HashMap<String, String>, HashMap<String, String>), 
             basic_fields.insert("level".to_string(), "net".to_string());
             optional_fields_map.insert("protocol".to_string(), "ipv4".to_string());
             level = "net";
-        },
-        "host" => { basic_fields.insert("level".to_string(), "host".to_string()); level = "host"; },
-        _ => { println!("Wrong rule level. Try again."); return ((HashMap::new(), HashMap::new()), false); }
+        }
+        "host" => {
+            basic_fields.insert("level".to_string(), "host".to_string());
+            level = "host";
+        }
+        _ => {
+            println!("Wrong rule level. Try again.");
+            return ((HashMap::new(), HashMap::new()), false);
+        }
     }
 
     println!("Enter rule name: ");
     let data = get_user_choice();
-    if data.is_empty() { 
+    if data.is_empty() {
         println!("Can't write empty value. Try again.");
         return ((HashMap::new(), HashMap::new()), false);
     }
@@ -275,7 +386,7 @@ fn add_rule_interface() -> ((HashMap<String, String>, HashMap<String, String>), 
 
     println!("Enter rule description: ");
     let data = get_user_choice();
-    if data.is_empty() { 
+    if data.is_empty() {
         println!("Can't write empty value. Try again.");
         return ((HashMap::new(), HashMap::new()), false);
     }
@@ -284,7 +395,7 @@ fn add_rule_interface() -> ((HashMap<String, String>, HashMap<String, String>), 
     if level == "host" {
         println!("Enter rule payload: ");
         let data = get_user_choice();
-        if data.is_empty() { 
+        if data.is_empty() {
             println!("Can't write empty value. Try again.");
             return ((HashMap::new(), HashMap::new()), false);
         }
@@ -297,41 +408,51 @@ fn add_rule_interface() -> ((HashMap<String, String>, HashMap<String, String>), 
             println!("What field you want to setup as trigger? (src/dst/both): ");
             let re = Regex::new(r"^([0-9a-f]{2}[:]){5}([0-9a-f]{2})$").unwrap();
             let mut mac_addr_str: String;
-    
+
             match get_user_choice().as_str() {
                 "src" => {
                     println!("Enter source MAC-address (':' as separator):");
                     mac_addr_str = get_user_choice().as_str().to_lowercase();
-                    if re.is_match(mac_addr_str.as_str()) { 
+                    if re.is_match(mac_addr_str.as_str()) {
                         net_payload_flag = true;
                         optional_fields_map.insert("src".to_string(), mac_addr_str);
                         optional_fields_map.insert("dst".to_string(), " ".to_string());
-                    } else { println!("Wrong MAC format. Try again"); }
-                },
+                    } else {
+                        println!("Wrong MAC format. Try again");
+                    }
+                }
                 "dst" => {
                     println!("Enter destination MAC-address (':' as separator):");
                     mac_addr_str = get_user_choice().as_str().to_lowercase();
-                    if re.is_match(mac_addr_str.as_str()) { 
+                    if re.is_match(mac_addr_str.as_str()) {
                         net_payload_flag = true;
                         optional_fields_map.insert("dst".to_string(), mac_addr_str);
                         optional_fields_map.insert("src".to_string(), " ".to_string());
-                    } else { println!("Wrong MAC format. Try again"); }
-                },
+                    } else {
+                        println!("Wrong MAC format. Try again");
+                    }
+                }
                 "both" => {
                     println!("Enter source MAC-address (':' as separator):");
                     mac_addr_str = get_user_choice().as_str().to_lowercase();
-                    if re.is_match(mac_addr_str.as_str()) { 
+                    if re.is_match(mac_addr_str.as_str()) {
                         optional_fields_map.insert("src".to_string(), mac_addr_str);
-                    } else { println!("Wrong MAC format. Try again"); }
+                    } else {
+                        println!("Wrong MAC format. Try again");
+                    }
 
                     println!("Enter destination MAC-address (':' as separator):");
                     mac_addr_str = get_user_choice().as_str().to_lowercase();
-                    if re.is_match(mac_addr_str.as_str()) { 
+                    if re.is_match(mac_addr_str.as_str()) {
                         net_payload_flag = true;
                         optional_fields_map.insert("dst".to_string(), mac_addr_str);
-                    } else { println!("Wrong MAC format. Try again"); }
-                },
-                _ => { println!("Error parsing parameter. Try again"); }
+                    } else {
+                        println!("Wrong MAC format. Try again");
+                    }
+                }
+                _ => {
+                    println!("Error parsing parameter. Try again");
+                }
             }
         }
     }

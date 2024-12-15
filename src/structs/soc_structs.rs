@@ -1,7 +1,7 @@
-use std::fmt;
 use std::collections::HashMap;
-use tokio::sync::mpsc;
+use std::fmt;
 use std::sync::{Arc, Mutex};
+use tokio::sync::mpsc;
 
 pub struct SessionStatus {
     pub host: String,
@@ -32,16 +32,16 @@ pub enum AuditEventType {
     AudLogAccess,
     EvtLogAccess,
     ServOff,
-    ServOn
+    ServOn,
 }
 
-pub mod multithread{
+pub mod multithread {
     use std::sync::{Arc, Mutex};
 
     pub struct FileMutexes {
         pub audit_mutex: Arc<Mutex<std::fs::File>>,
         pub event_mutex: Arc<Mutex<std::fs::File>>,
-        pub rules_mutex: Arc<Mutex<std::fs::File>>
+        pub rules_mutex: Arc<Mutex<std::fs::File>>,
     }
 }
 

@@ -1,45 +1,29 @@
-mod menu;
-mod file_manager;
-mod structs;
-mod sensor_handler;
 mod auth;
+mod file_manager;
+mod menu;
+mod sensor_handler;
+mod structs;
 
-// Network Communication
-use std::io::{self, Read, Write};
-use std::ops::DerefMut;
-use std::thread;
-use tokio::sync::mpsc;
-use tokio::net::{TcpListener, TcpStream};
-use tokio::spawn;
-use tokio_tungstenite::tungstenite::ClientRequestBuilder;
-use std::time::SystemTime;
-
-//config parse
-use std::fs::OpenOptions;
-use std::io::BufRead;
-use std::path::Path;
-
+use chrono::{DateTime, Local};
 use clap::{Arg, Command};
-use std::sync::{Arc, Mutex};
-use futures::channel;
-use menu::menu::main_menu;
 use std::collections::HashMap;
-use structs::soc_structs::{AuditEventType, LogFiles, SessionStatus};
-use auth::auth::authenticate;
-use sensor_handler::sensor_handler::handle_client;
-use crate::structs::soc_structs::multithread::FileMutexes;
+use std::fs::OpenOptions;
+use std::io::Read;
+use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
+use tokio::net::TcpListener;
+use tokio::spawn;
+use tokio::sync::mpsc;
+
+use crate::auth::auth::authenticate;
 use crate::file_manager::file_manager::audit_handler::{prepare_file_mutexes, write_audit_event};
 use crate::file_manager::file_manager::event_handler::write_security_event;
-use chrono::{DateTime, Local};
-use chrono::offset::Utc;
+use crate::menu::menu::main_menu;
+use crate::sensor_handler::sensor_handler::handle_client;
+use crate::structs::soc_structs::multithread::FileMutexes;
+use crate::structs::soc_structs::{AuditEventType, LogFiles, SessionStatus};
 
 const CONFIG: &str = "server_config.txt";
-// const USER_LIST_FILE: &str = "users.txt";
-// const AUDIT_LOG: &str = "audit.txt";
-// const EVENT_LOG: &str = "events.txt";
-// const RULES_FILE: &str = "rules.txt";
-// const HOSTNAME: &str = "Control centre";
-// const LPORT: &str = "7777";
 
 #[tokio::main]
 async fn main() {
@@ -71,10 +55,11 @@ async fn main() {
     {
         let mut conf_file = OpenOptions::new()
             .read(true) // Позволяем чтение
-            .open(CONFIG).unwrap();
+            .open(CONFIG)
+            .unwrap();
         let buf: &mut String = &mut "".to_owned();
 
-        match (conf_file).read_to_string(buf){
+        match (conf_file).read_to_string(buf) {
             Ok(_) => {
                 let strings = buf.split("\n");
 
@@ -103,18 +88,22 @@ async fn main() {
                         }
                     }
                 }
-            },
-            Err(e) => { println!("{}", e);}
+            }
+            Err(e) => {
+                println!("{}", e);
+            }
         }
     }
-    
+
     let sensors: HashMap<String, (mpsc::Sender<String>, String, String, bool)> = HashMap::new();
-    let sensors_mutex =  Arc::new(Mutex::new(sensors));
+    let sensors_mutex = Arc::new(Mutex::new(sensors));
     let sensors_mutex_clone_for_rx = Arc::clone(&sensors_mutex);
 
-    let log_files = LogFiles {audit_file: audit_log.clone(),
+    let log_files = LogFiles {
+        audit_file: audit_log.clone(),
         event_file: event_log.clone(),
-        rules_file: rules_file.clone()};
+        rules_file: rules_file.clone(),
+    };
 
     let file_mutexes: FileMutexes = prepare_file_mutexes(&log_files);
     let file_mutexes_clone = FileMutexes {
@@ -126,7 +115,7 @@ async fn main() {
     let is_admin;
     let username: String;
     let listener;
-    let audit_status:Arc<Mutex<bool>> = Arc::new(Mutex::new(true));
+    let audit_status: Arc<Mutex<bool>> = Arc::new(Mutex::new(true));
     let audit_status_clone = Arc::clone(&audit_status);
 
     {
@@ -136,40 +125,74 @@ async fn main() {
         let usr_list = user_list_file.clone();
         let hstnm = hostname.clone();
         let aud_log = audit_log.clone();
-        let auth_res = authenticate(&input_username, &input_password, &usr_list, hstnm, &file_mutexes, aud_log, *aud_stat);
-        if auth_res.0 { username = auth_res.1; is_admin = auth_res.2; } else { return; }
+        let auth_res = authenticate(
+            &input_username,
+            &input_password,
+            &usr_list,
+            hstnm,
+            &file_mutexes,
+            aud_log,
+            *aud_stat,
+        );
+        if auth_res.0 {
+            username = auth_res.1;
+            is_admin = auth_res.2;
+        } else {
+            return;
+        }
     }
 
     let hostname_clone = hostname.clone();
     let username_clone = username.clone();
 
     match TcpListener::bind("127.0.0.1:".to_string() + lport.as_str()).await {
-        Ok(bind_res) => { listener = bind_res; },
-        Err(e) => { println!("Failed to bind to {} port. Try again.\n{}", lport, e); return; }
+        Ok(bind_res) => {
+            listener = bind_res;
+        }
+        Err(e) => {
+            println!("Failed to bind to {} port. Try again.\n{}", lport, e);
+            return;
+        }
     }
 
     {
         let aud_stat = audit_status_clone.lock().unwrap();
         let hst = hostname_clone.clone();
         let usr = username_clone.clone();
-        write_audit_event(SystemTime::now(), hst, usr, AuditEventType::ServOn, "Management server turned on. Listener started".to_string(), &file_mutexes_clone, &audit_log, *aud_stat);
+        write_audit_event(
+            SystemTime::now(),
+            hst,
+            usr,
+            AuditEventType::ServOn,
+            "Management server turned on. Listener started".to_string(),
+            &file_mutexes_clone,
+            &audit_log,
+            *aud_stat,
+        );
         println!("Start listening on {} port", lport);
     }
-    
+
     let (tx, mut rx) = mpsc::channel::<String>(32);
-  
+
     // console interface
     {
         let tx_clone = tx.clone();
         spawn(async move {
             let current_session: &mut SessionStatus = &mut SessionStatus {
-                    host: hostname,
-                    user: username,
-                    is_admin: is_admin,
-                    sensor_list: sensors_mutex
-                };
-            
-            main_menu(current_session, &log_files, tx_clone, &file_mutexes, &audit_status).await;
+                host: hostname,
+                user: username,
+                is_admin: is_admin,
+                sensor_list: sensors_mutex,
+            };
+
+            main_menu(
+                current_session,
+                &log_files,
+                tx_clone,
+                &file_mutexes,
+                &audit_status,
+            )
+            .await;
         });
     }
 
@@ -215,14 +238,14 @@ async fn main() {
                     // parced_cmd[1] - name of client, parced_cmd[2] - client type, parced_cmd[3] - client user
                     let init_vec: Vec<&str> = cmd.split("[:1:]").collect();
                     let event_type = if init_vec[2] == "net" { AuditEventType::NetSenConn } else { AuditEventType::HostSenConn };
-                    
+
                     let aud_stat = audit_status_clone.lock().unwrap();
                     write_audit_event(SystemTime::now(), init_vec[1].to_string(), init_vec[3].to_string(), event_type, "Sensor connected. Type - ".to_string() + init_vec[2], &file_mutexes_clone, &audit_log, *aud_stat);
                 }
                 Some(ref cmd) if cmd.starts_with("update") => {
                     // parced_cmd[1] - name of client, parced_cmd[2] - client user, parced_cmd[3] - client level
                     let init_vec: Vec<&str> = cmd.split("[:3:]").collect();
-                    
+
                     let aud_stat = audit_status_clone.lock().unwrap();
                     write_audit_event(SystemTime::now(), init_vec[1].to_string(), init_vec[2].to_string(), AuditEventType::RulesUpdate, "Rules updated - ".to_string() + init_vec[3] + " level", &file_mutexes_clone, &audit_log, *aud_stat);
                 }
@@ -235,7 +258,6 @@ async fn main() {
                     let unix_time: i64 = parced_cmd[2].parse().unwrap();
                     // TIMEZONE.parse().unwrap()
                     let datetime: DateTime<Local> = DateTime::from_timestamp(unix_time, 0).unwrap().with_timezone(&Local);
-                    let ev_log = event_log.clone();
                     write_security_event(datetime, parced_cmd[3].to_string(), parced_cmd[1].to_string(), net_level, &file_mutexes_clone, &event_log.clone());
                     if print_state {
                         println!("Event! Time: {}, Sensor: {}", datetime.format("%d-%m-%Y %H:%M:%S").to_string(), parced_cmd[3].to_string());
