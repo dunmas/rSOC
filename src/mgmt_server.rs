@@ -253,11 +253,11 @@ async fn main() {
                     // parced_cmd[1] - rule hash, parced_cmd[2] - UNIX-time, parced_cmd[4] - sensor name, parced_cmd[5] - level, parced_cmd[6] - sensor_status
                     let parced_cmd: Vec<&str> = cmd.split("[:3:]").collect();
 
-                    if parced_cmd[6] == "false" { continue; }
+                    // if parced_cmd[6] == "false" { continue; }
                     let net_level = if parced_cmd[6] == "net" { true } else { false };
                     let mut host_path = " ";
                     let host_name;
-                    if !net_level { host_path = parced_cmd[3]; host_name = parced_cmd[4] } else { host_name = parced_cmd[5] }
+                    if !net_level { if parced_cmd[6] == "false" { continue; } host_path = parced_cmd[3]; host_name = parced_cmd[4]; } else { if parced_cmd[7] == "false" { continue; } host_name = parced_cmd[5] }
                     let unix_time: i64 = parced_cmd[2].parse().unwrap();
                     let datetime: DateTime<Local> = DateTime::from_timestamp(unix_time, 0).unwrap().with_timezone(&Local);
 

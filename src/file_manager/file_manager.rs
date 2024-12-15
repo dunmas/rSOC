@@ -269,7 +269,7 @@ pub mod event_handler {
                 }
 
                 // parse string and get sensor name if required
-                for i in 1..top_count {
+                for i in 1..top_count + 1 {
                     data_vec.push(strings[size - i].to_string());
                 }
 
