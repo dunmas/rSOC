@@ -103,6 +103,7 @@ pub async fn handle_client<'a>(mut stream: TcpStream, addr_str: String, mut clie
                             }
 
                             println!("Sended rules to {}", addr_str);
+                            server_tx.send(raw_string.to_string() + "[:3:]" + init_vec[0] + "[:3:]" + init_vec[2] + "[:3:]" + init_vec[1]).await.unwrap();
                         },
                         // cmd_vec[1] - rule hash, cmd_vec[2] - UNIX-time
                         "event" => {

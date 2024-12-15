@@ -151,7 +151,13 @@ async fn main() {
                     let aud_stat = audit_status_clone.lock().unwrap();
                     write_audit_event(SystemTime::now(), init_vec[1].to_string(), init_vec[3].to_string(), event_type, "Sensor connected. Type - ".to_string() + init_vec[2], &file_mutexes_clone, &AUDIT_LOG.to_string(), *aud_stat);
                 }
-                
+                Some(ref cmd) if cmd.starts_with("update") => {
+                    // parced_cmd[1] - name of client, parced_cmd[2] - client user, parced_cmd[3] - client level
+                    let init_vec: Vec<&str> = cmd.split("[:3:]").collect();
+                    
+                    let aud_stat = audit_status_clone.lock().unwrap();
+                    write_audit_event(SystemTime::now(), init_vec[1].to_string(), init_vec[2].to_string(), AuditEventType::RulesUpdate, "Rules updated - ".to_string() + init_vec[3] + " level", &file_mutexes_clone, &AUDIT_LOG.to_string(), *aud_stat);
+                }
                 Some(ref cmd) if cmd.starts_with("event") => {
                     // parced_cmd[1] - rule hash, parced_cmd[2] - UNIX-time, parced_cmd[3] - sensor name, parced_cmd[4] - level, parced_cmd[5] - sensor_status
                     let parced_cmd: Vec<&str> = cmd.split("[:3:]").collect();
