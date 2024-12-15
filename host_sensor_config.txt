@@ -1,0 +1,6 @@
+sensor_name: Zakat-1;
+username: host_admin;
+rules_file: host_rules.txt;
+
+# relative path or folder name near your program
+control_path: ./test_path;

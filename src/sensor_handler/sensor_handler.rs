@@ -167,10 +167,15 @@ pub async fn handle_client<'a>(
                             println!("Sended rules to {}", addr_str);
                             server_tx.send(raw_string.to_string() + "[:3:]" + init_vec[0] + "[:3:]" + init_vec[2] + "[:3:]" + init_vec[1]).await.unwrap();
                         },
-                        // cmd_vec[1] - rule hash, cmd_vec[2] - UNIX-time
+                        // cmd_vec[1] - rule hash, cmd_vec[2] - UNIX-time, cmd_vec[3] - path (if host)
                         "event" => {
                             let status = if sensors_mutex_clone.lock().unwrap().get(&addr_str).unwrap().3 { "true" } else { "false" };
-                            server_tx.send(raw_string.to_string() + "[:3:]" + init_vec[0] + "[:3:]" + init_vec[1]+ "[:3:]" + status).await.unwrap();
+                            if init_vec[1] == "host" {
+                                server_tx.send(raw_string.to_string() + "[:3:]" + init_vec[0] + "[:3:]" + init_vec[1]+ "[:3:]" + status).await.unwrap();
+                            }
+                            else {
+                                server_tx.send(raw_string.to_string() + "[:3:] [:3:]" + "[:3:]" + init_vec[0] + "[:3:]" + init_vec[1]+ "[:3:]" + status).await.unwrap();
+                            }
                         }
                         _ => {}
                     }

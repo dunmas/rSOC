@@ -289,6 +289,7 @@ pub mod event_handler {
         is_net_level: bool,
         file_mutexes: &FileMutexes,
         event_file: &String,
+        host_path: &String,
     ) -> bool {
         let mut event_file_mutex = file_mutexes.event_mutex.lock().unwrap();
 
@@ -297,27 +298,13 @@ pub mod event_handler {
         } else {
             String::from("host")
         };
-        // let mut rule_params_string: String = "".to_string();
-
-        // for entry in rule_map {
-        //     rule_params_string.push_str(&entry.0);
-        //     rule_params_string += "[:1:]";
-        //     rule_params_string.push_str(&entry.1);
-        //     rule_params_string += "[:2:]";
-        // }
-
-        // let mut rps_len = rule_params_string.len();
-
-        // for _ in 0..5 {
-        //     rule_params_string.remove(rps_len - 1);
-        //     rps_len -= 1;
-        // }
 
         let basic_list_string: String = vec![
             timestamp.format("%d-%m-%Y %H:%M:%S").to_string(),
             host,
             is_net_rule_string,
             rule_hash,
+            host_path.to_string()
         ]
         .join("[:2:]");
 
@@ -343,8 +330,8 @@ pub mod event_handler {
 
     fn console_output(data_vec: Vec<String>) {
         let mut result: String = String::new();
-        let header: String = String::from("-------------------------------------------------------------------------------------------\n\
-                                           || -------------------------------- Time, Hostname, Level, Rule hash ------------------- ||\n");
+        let header: String = String::from("-----------------------------------------------------------------------------------------------------------------\n\
+                                           || -------------------------------- Time, Hostname, Level, Rule hash, Path (if host-level) ------------------- ||\n");
 
         for raw_string in data_vec {
             if raw_string.is_empty() {

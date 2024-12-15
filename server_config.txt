@@ -17,4 +17,4 @@ hostname: Control centre;
 lport: 7777;
 
 #print security events in main console (0 to turn off, 1 to turn on)
-event_print: 0;
+event_print: 1;

@@ -250,17 +250,20 @@ async fn main() {
                     write_audit_event(SystemTime::now(), init_vec[1].to_string(), init_vec[2].to_string(), AuditEventType::RulesUpdate, "Rules updated - ".to_string() + init_vec[3] + " level", &file_mutexes_clone, &audit_log, *aud_stat);
                 }
                 Some(ref cmd) if cmd.starts_with("event") => {
-                    // parced_cmd[1] - rule hash, parced_cmd[2] - UNIX-time, parced_cmd[3] - sensor name, parced_cmd[4] - level, parced_cmd[5] - sensor_status
+                    // parced_cmd[1] - rule hash, parced_cmd[2] - UNIX-time, parced_cmd[4] - sensor name, parced_cmd[5] - level, parced_cmd[6] - sensor_status
                     let parced_cmd: Vec<&str> = cmd.split("[:3:]").collect();
-                    if parced_cmd[5] == "false" { continue; }
-                    let net_level = if parced_cmd[4] == "net" { true } else { false };
 
+                    if parced_cmd[6] == "false" { continue; }
+                    let net_level = if parced_cmd[6] == "net" { true } else { false };
+                    let mut host_path = " ";
+                    let host_name;
+                    if !net_level { host_path = parced_cmd[3]; host_name = parced_cmd[4] } else { host_name = parced_cmd[5] }
                     let unix_time: i64 = parced_cmd[2].parse().unwrap();
-                    // TIMEZONE.parse().unwrap()
                     let datetime: DateTime<Local> = DateTime::from_timestamp(unix_time, 0).unwrap().with_timezone(&Local);
-                    write_security_event(datetime, parced_cmd[3].to_string(), parced_cmd[1].to_string(), net_level, &file_mutexes_clone, &event_log.clone());
+
+                    write_security_event(datetime, host_name.to_string(), parced_cmd[1].to_string(), net_level, &file_mutexes_clone, &event_log.clone(), &host_path.to_string());
                     if print_state {
-                        println!("Event! Time: {}, Sensor: {}", datetime.format("%d-%m-%Y %H:%M:%S").to_string(), parced_cmd[3].to_string());
+                        println!("Event! Time: {}, Sensor: {}", datetime.format("%d-%m-%Y %H:%M:%S").to_string(), host_name);
                     }
                 }
                 _ => {}
