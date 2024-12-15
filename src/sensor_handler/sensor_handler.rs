@@ -106,7 +106,8 @@ pub async fn handle_client<'a>(mut stream: TcpStream, addr_str: String, mut clie
                         },
                         // cmd_vec[1] - rule hash, cmd_vec[2] - UNIX-time
                         "event" => {
-                            server_tx.send(raw_string.to_string() + "[:3:]" + init_vec[0] + "[:3:]" + init_vec[1]).await.unwrap();
+                            let status = if sensors_mutex_clone.lock().unwrap().get(&addr_str).unwrap().3 { "true" } else { "false" };
+                            server_tx.send(raw_string.to_string() + "[:3:]" + init_vec[0] + "[:3:]" + init_vec[1]+ "[:3:]" + status).await.unwrap();
                         }
                         _ => {}
                     }

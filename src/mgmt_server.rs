@@ -143,8 +143,9 @@ async fn main() {
                 }
                 
                 Some(ref cmd) if cmd.starts_with("event") => {
-                    // parced_cmd[1] - rule hash, parced_cmd[2] - UNIX-time, parced_cmd[3] - sensor name, parced_cmd[4] - level
+                    // parced_cmd[1] - rule hash, parced_cmd[2] - UNIX-time, parced_cmd[3] - sensor name, parced_cmd[4] - level, parced_cmd[5] - sensor_status
                     let parced_cmd: Vec<&str> = cmd.split("[:3:]").collect();
+                    if parced_cmd[5] == "false" { continue; }
                     let net_level = if parced_cmd[4] == "net" { true } else { false };
 
                     let unix_time: i64 = parced_cmd[2].parse().unwrap();
