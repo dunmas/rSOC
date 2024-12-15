@@ -44,19 +44,19 @@ const CONFIG: &str = "server_config.txt";
 #[tokio::main]
 async fn main() {
     let matches = Command::new("rSOC")
-        .version("0.0.1")
+        .version("0.1.0")
         .author("buran <bvran@proton.me>")
         .about("rSOC - Simple network and endpoint SOC implementation written on Rust\n\nThis is a Management Server - head unit of SOC")
         .arg(Arg::new("user")
                  .short('u')
                  .long("user")
                  .help("User to authenticate"))
-                //  .arg_required_else_help(true)
+                 .arg_required_else_help(true)
         .arg(Arg::new("password")
                  .short('p')
                  .long("password")
                  .help("User's password"))
-                //  .arg_required_else_help(true)
+                 .arg_required_else_help(true)
         .get_matches();
 
     let mut user_list_file: String = String::new();
@@ -65,6 +65,7 @@ async fn main() {
     let mut rules_file: String = String::new();
     let mut hostname: String = String::new();
     let mut lport: String = String::new();
+    let mut print_state = false;
 
     // config parcing
     {
@@ -97,6 +98,7 @@ async fn main() {
                             "rules_file" => rules_file = value.to_string(),
                             "hostname" => hostname = value.to_string(),
                             "lport" => lport = value.to_string(),
+                            "event_print" => print_state = if value == "0" { false } else { true },
                             _ => eprintln!("Неизвестный ключ: {}", key),
                         }
                     }
@@ -105,16 +107,6 @@ async fn main() {
             Err(e) => { println!("{}", e);}
         }
     }
-
-
-    // Временное выключение аутентификации на этапе разработки
-    let username = "admin".to_string();
-    let is_admin = true;
-    // let username;
-    // let input_username = matches.get_one::<String>("user").unwrap();
-    // let input_password = matches.get_one::<String>("password").unwrap();
-    // let auth_res = authenticate(&input_username, &input_password, user_list_file);
-    // if auth_res.0 { username = auth_res.1; is_admin = auth_res.2; } else { return; }
     
     let sensors: HashMap<String, (mpsc::Sender<String>, String, String, bool)> = HashMap::new();
     let sensors_mutex =  Arc::new(Mutex::new(sensors));
@@ -131,22 +123,41 @@ async fn main() {
         rules_mutex: Arc::clone(&file_mutexes.rules_mutex),
     };
 
-    // to settings
-    let print_state = false;
-
+    let is_admin;
+    let username: String;
     let listener;
+    let audit_status:Arc<Mutex<bool>> = Arc::new(Mutex::new(true));
+    let audit_status_clone = Arc::clone(&audit_status);
+
+    {
+        let input_username = matches.get_one::<String>("user").unwrap();
+        let input_password = matches.get_one::<String>("password").unwrap();
+        let aud_stat = audit_status.lock().unwrap();
+        let usr_list = user_list_file.clone();
+        let hstnm = hostname.clone();
+        let aud_log = audit_log.clone();
+        let auth_res = authenticate(&input_username, &input_password, &usr_list, hstnm, &file_mutexes, aud_log, *aud_stat);
+        if auth_res.0 { username = auth_res.1; is_admin = auth_res.2; } else { return; }
+    }
+
+    let hostname_clone = hostname.clone();
+    let username_clone = username.clone();
 
     match TcpListener::bind("127.0.0.1:".to_string() + lport.as_str()).await {
         Ok(bind_res) => { listener = bind_res; },
         Err(e) => { println!("Failed to bind to {} port. Try again.\n{}", lport, e); return; }
     }
+
+    {
+        let aud_stat = audit_status_clone.lock().unwrap();
+        let hst = hostname_clone.clone();
+        let usr = username_clone.clone();
+        write_audit_event(SystemTime::now(), hst, usr, AuditEventType::ServOn, "Management server turned on. Listener started".to_string(), &file_mutexes_clone, &audit_log, *aud_stat);
+        println!("Start listening on {} port", lport);
+    }
     
-    println!("Start listening on {} port", lport);
     let (tx, mut rx) = mpsc::channel::<String>(32);
   
-    let audit_status:Arc<Mutex<bool>> = Arc::new(Mutex::new(true));
-    let audit_status_clone = Arc::clone(&audit_status);
-
     // console interface
     {
         let tx_clone = tx.clone();
@@ -186,6 +197,8 @@ async fn main() {
             command = rx.recv() => match command {
                 Some(ref cmd) if cmd == "stop" => {
                     println!("Stop listening...");
+                    let aud_stat = audit_status_clone.lock().unwrap();
+                    write_audit_event(SystemTime::now(), hostname_clone, username_clone, AuditEventType::ServOff, "Management server turned off".to_string(), &file_mutexes_clone, &audit_log, *aud_stat);
                     break;
                 },
                 Some(ref cmd) if cmd.starts_with("cl_disc") => {

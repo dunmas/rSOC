@@ -1,10 +1,11 @@
 use std::io::{self, Write};
 use std::collections::HashMap;
 use std::os::linux::net;
+use std::time::SystemTime;
 use regex::Regex;
-use crate::file_manager::file_manager::audit_handler::{change_audit_status, prepare_file_mutexes, get_10_latest_audit_messages};
+use crate::file_manager::file_manager::audit_handler::{change_audit_status, prepare_file_mutexes, get_10_latest_audit_messages, write_audit_event};
 use crate::structs::soc_structs::multithread::FileMutexes;
-use crate::structs::soc_structs::{SessionStatus, LogFiles};
+use crate::structs::soc_structs::{AuditEventType, LogFiles, SessionStatus};
 use crate::file_manager::file_manager::event_handler::get_10_latest_event_messages;
 use crate::sensor_handler::rule_handler::{get_rules_list, add_rule, delete_rule};
 use crate::sensor_handler::sensor_handler::{get_sensor_list, change_sensor_state};
@@ -71,7 +72,7 @@ pub async fn main_menu(session_status: &mut SessionStatus, log_files: &LogFiles,
         let choise = get_user_choice();
 
         match choise.as_str() {
-            "1" => event_menu(session_status, &file_mutexes),
+            "1" => event_menu(session_status, &file_mutexes, &log_files.audit_file, audit_status),
             "2" => sensors_menu(session_status, &file_mutexes, &log_files.audit_file, audit_status),
             "3" => audit_menu(session_status, &file_mutexes, &log_files.audit_file, audit_status),
             "4" => rule_menu(session_status, &file_mutexes, &log_files.rules_file),
@@ -92,7 +93,7 @@ pub fn get_user_choice() -> String {
     choice.trim().to_string()
 }
 
-fn event_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes) {
+fn event_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, log_file: &String, audit_status: &Arc<Mutex<bool>>) {
     loop {
         println!("{}", EVENT_MENU);
         let choise = get_user_choice();
@@ -100,12 +101,16 @@ fn event_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes) {
         match choise.as_str() {
             "1" => {
                 get_10_latest_event_messages(file_mutexes,"");
+                let aud_status = audit_status.lock().unwrap();
+                write_audit_event(SystemTime::now(), session_status.host.clone(), session_status.user.clone(), AuditEventType::EvtLogAccess, "Event log has been checked".to_string(), file_mutexes, log_file, *aud_status);
                 pause!();
             }
             "2" => {
                 println!("Please, enter name of the sensor:");
                 let required_sensor = get_user_choice();
                 get_10_latest_event_messages(file_mutexes,&required_sensor);
+                let aud_status = audit_status.lock().unwrap();
+                write_audit_event(SystemTime::now(), session_status.host.clone(), session_status.user.clone(), AuditEventType::EvtLogAccess, "Event log has been checked".to_string(), file_mutexes, log_file, *aud_status);
                 pause!();
             }
             "3" => break,
@@ -166,6 +171,8 @@ fn audit_menu(session_status: &mut SessionStatus, file_mutexes: &FileMutexes, lo
             }
             "2" => {
                 get_10_latest_audit_messages(file_mutexes);
+                let aud_status = audit_status.lock().unwrap();
+                write_audit_event(SystemTime::now(), session_status.host.clone(), session_status.user.clone(), AuditEventType::AudLogAccess, "Audit log has been checked".to_string(), file_mutexes, log_file, *aud_status);
                 pause!();
             }
             "3" => break,

@@ -1,6 +1,20 @@
+# file to save users and parameters
 user_list_file: users.txt;
+
+# file to write audit events
 audit_log: audit.txt;
+
+# file to write security events from sensors
 event_log: events.txt;
+
+# file to store list of rules
 rules_file: rules.txt;
+
+# management server hostname
 hostname: Control centre;
+
+# binding port
 lport: 7777;
+
+#print security events in main console (0 to turn off, 1 to turn on)
+event_print: 0;

@@ -1,0 +1,5 @@
+sensor_name: Zarya-1;
+username: net_admin;
+level: net;
+rules_file: net_rules.txt;
+listen_interface: eth0;
