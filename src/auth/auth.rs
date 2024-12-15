@@ -8,7 +8,7 @@ use std::time::SystemTime;
 use crate::structs::soc_structs::AuditEventType;
 use crate::structs::soc_structs::multithread::FileMutexes;
 
-pub fn authentificate(username: &String, password: &String, users_file: &String, host: String, file_mutexes: &FileMutexes, log_file: String, audit_status: bool) -> (bool, String, bool) {
+pub fn authenticate(username: &String, password: &String, users_file: &String, host: String, file_mutexes: &FileMutexes, log_file: String, audit_status: bool) -> (bool, String, bool) {
     let user_map = user_file_handler::get_user_map(users_file);
     let mut hasher = Sha256::new();
     hasher.update(password);

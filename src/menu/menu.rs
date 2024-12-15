@@ -251,13 +251,7 @@ fn add_rule_interface() -> ((HashMap<String, String>, HashMap<String, String>), 
     match get_user_choice().as_str() {
         "net" => {
             basic_fields.insert("level".to_string(), "net".to_string());
-            println!("Enter rule protocol: ");
-            let data = get_user_choice();
-            if data.is_empty() { 
-                println!("Can't write empty value. Try again.");
-                return ((HashMap::new(), HashMap::new()), false);
-            }
-            optional_fields_map.insert("protocol".to_string(), data);
+            optional_fields_map.insert("protocol".to_string(), "ipv4".to_string());
             level = "net";
         },
         "host" => { basic_fields.insert("level".to_string(), "host".to_string()); level = "host"; },

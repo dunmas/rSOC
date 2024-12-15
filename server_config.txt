@@ -1,0 +1,6 @@
+user_list_file: users.txt;
+audit_log: audit.txt;
+event_log: events.txt;
+rules_file: rules.txt;
+hostname: Control centre;
+lport: 7777;
